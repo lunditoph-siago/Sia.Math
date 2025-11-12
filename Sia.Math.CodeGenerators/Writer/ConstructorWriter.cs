@@ -120,9 +120,9 @@ public class MatrixColumnConstructorWriter(VectorType type) : ICompositeWriter
         source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         using (Generator.GenerateInConstructor(source, type.TypeName, m_TypeParams))
         {
-            foreach (var field in VectorType.MatrixFields.Take(type.Columns))
+            foreach (var fieldName in VectorType.MatrixFields.Take(type.Columns))
             {
-                source.WriteLine("this.{0} = {0};", field);
+                source.WriteLine("this.{0} = {0};", fieldName);
             }
         }
     };
@@ -175,9 +175,14 @@ public class MatrixRowConstructorWriter(VectorType type) : ICompositeWriter
         source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         using (Generator.GenerateInConstructor(source, type.TypeName, m_TypeParams))
         {
+
+            var isSquare = type.Rows == type.Columns;
             var assignments = VectorType.MatrixFields.Take(type.Columns)
-                .Select((column, i) =>
-                    $"this.{column} = new {type.BaseType.ToTypeName(type.Rows, 1)}({
+                .Select((fieldName, i) => isSquare
+                    ? $"this.{fieldName} = new {type.BaseType.ToTypeName(type.Columns, 1)}({
+                        string.Join(", ", Enumerable.Range(0, type.Columns).Select(col => $"m{i}{col}"))
+                    });"
+                    : $"this.{fieldName} = new {type.BaseType.ToTypeName(type.Rows, 1)}({
                         string.Join(", ", Enumerable.Range(0, type.Rows).Select(row => $"m{row}{i}"))
                     });");
 

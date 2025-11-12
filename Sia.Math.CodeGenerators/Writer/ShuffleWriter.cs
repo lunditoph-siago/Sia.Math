@@ -20,8 +20,8 @@ public class SelectShuffleWriter(VectorType type) : IMathSourceWriter
             {
                 var index = Array.IndexOf(VectorType.ShuffleComponents, component);
                 var target = index >= type.Rows ? "b" : "a";
-                var field = type.Rows > 1 ? $".{VectorType.VectorFields[index % type.Rows]}" : string.Empty;
-                source.WriteLine($"ShuffleComponent.{component} => {target}{field},");
+                var fieldName = type.Rows > 1 ? $".{VectorType.VectorFields[index % type.Rows]}" : string.Empty;
+                source.WriteLine($"ShuffleComponent.{component} => {target}{fieldName},");
             }
             source.WriteLine("_ => throw new System.ArgumentException($\"Invalid shuffle component: {component}\")");
         }
@@ -47,9 +47,9 @@ public class ShuffleWriter(VectorType type) : IMathSourceWriter
             source.WriteLine("/// <param name=\"left\">{0} to use as the left argument</param>", type.TypeName);
             source.WriteLine("/// <param name=\"right\">{0} to use as the right argument</param>", type.TypeName);
 
-            foreach (var field in VectorType.VectorFields.Take(comp))
+            foreach (var fieldName in VectorType.VectorFields.Take(comp))
             {
-                source.WriteLine("/// <param name=\"{0}\">{1} component selector</param>", field, comp > 1 ? $"{resultType} {field}" : string.Empty);
+                source.WriteLine("/// <param name=\"{0}\">{1} component selector</param>", fieldName, comp > 1 ? $"{resultType} {fieldName}" : string.Empty);
             }
 
             source.WriteLine("/// <returns>{0} shuffled value</returns>", resultType);

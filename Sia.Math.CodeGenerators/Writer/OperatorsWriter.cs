@@ -14,12 +14,28 @@ public enum IndexerMode
 public class BinaryOperatorWriter(VectorType type, (int Rows, int Columns) lhs, (int Rows, int Columns) rhs,
     string op, string opDesc, BaseType resultType, (int Rows, int Columns) result) : ITypeSourceWriter
 {
-    public HashSet<string> Imports { get; } = ["System.Numerics", "System.Runtime.CompilerServices"];
+    public HashSet<string> Imports { get; } = ["System.Numerics", "System.Runtime.CompilerServices", "System.Runtime.Intrinsics"];
 
     public HashSet<string> Inherits { get; } = [];
 
     public Action<IndentedTextWriter> TypeSourceWriter => source =>
     {
+        var resultTypeName = resultType.ToTypeName(result.Rows, result.Columns);
+        var lhsTypeName = type.BaseType.ToTypeName(lhs.Rows, lhs.Columns);
+        var rhsTypeName = type.BaseType.ToTypeName(rhs.Rows, rhs.Columns);
+
+        source.WriteLine("/// {0}", opDesc);
+        source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
+
+        if (SimdSupport.IsEligibleVector(resultType, result.Rows, result.Columns) && SimdSupport.SupportsSimdOp(op))
+        {
+            var lhsExpr = lhs.Rows == 1 ? SimdSupport.CreateBroadcast(resultType, result.Rows, "lhs") : "lhs.AsSimdUnsafe()";
+            var rhsExpr = rhs.Rows == 1 ? SimdSupport.CreateBroadcast(resultType, result.Rows, "rhs") : "rhs.AsSimdUnsafe()";
+            source.WriteLine("public static {0} operator {1} ({2} lhs, {3} rhs) => new {0}({4} {1} {5});",
+                resultTypeName, op, lhsTypeName, rhsTypeName, lhsExpr, rhsExpr);
+            return;
+        }
+
         var fields = result.Columns > 1 ? VectorType.MatrixFields : VectorType.VectorFields;
         var resultCount = result.Columns > 1 ? result.Columns : result.Rows;
 
@@ -31,11 +47,8 @@ public class BinaryOperatorWriter(VectorType type, (int Rows, int Columns) lhs, 
                 _ => $"lhs.{fields[i]} {op} rhs.{fields[i]}"
             }));
 
-        source.WriteLine("/// {0}", opDesc);
-        source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         source.WriteLine("public static {0} operator {1} ({2} lhs, {3} rhs) => new {0}({4});",
-            resultType.ToTypeName(result.Rows, result.Columns), op, type.BaseType.ToTypeName(lhs.Rows, lhs.Columns),
-            type.BaseType.ToTypeName(rhs.Rows, rhs.Columns), bodyStr);
+            resultTypeName, op, lhsTypeName, rhsTypeName, bodyStr);
     };
 }
 
@@ -101,32 +114,48 @@ public class IndexOperatorWriter(VectorType type, IndexerMode mode) : ITypeSourc
 
 public class ShiftOperatorWriter(VectorType type, string op, string opDesc) : ITypeSourceWriter
 {
-    public HashSet<string> Imports { get; } = ["System.Runtime.CompilerServices"];
+    public HashSet<string> Imports { get; } = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"];
 
     public HashSet<string> Inherits { get; } = [];
 
     public Action<IndentedTextWriter> TypeSourceWriter => source =>
     {
+        source.WriteLine("/// {0}", opDesc);
+        source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
+
+        if (SimdSupport.IsEligibleVector(type.BaseType, type.Rows, type.Columns))
+        {
+            source.WriteLine("public static {0} operator {1} ({0} x, int n) => new {0}(x.AsSimdUnsafe() {1} n);", type.TypeName, op);
+            return;
+        }
+
         var fields = type.Columns > 1 ? VectorType.MatrixFields : VectorType.VectorFields;
         var resultCount = type.Columns > 1 ? type.Columns : type.Rows;
 
         var bodyStr = string.Join(", ", Enumerable.Range(0, resultCount)
             .Select(i => type.Rows == 1 ? $"x {op} n" : $"x.{fields[i]} {op} n"));
 
-        source.WriteLine("/// {0}", opDesc);
-        source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         source.WriteLine("public static {0} operator {1} ({0} x, int n) => new {0}({2});", type.TypeName, op, bodyStr);
     };
 }
 
 public class UnaryOperatorWriter(VectorType type, string op, string opDesc) : ITypeSourceWriter
 {
-    public HashSet<string> Imports { get; } = ["System.Runtime.CompilerServices"];
+    public HashSet<string> Imports { get; } = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"];
 
     public HashSet<string> Inherits { get; } = [];
 
     public Action<IndentedTextWriter> TypeSourceWriter => source =>
     {
+        source.WriteLine("/// {0}", opDesc);
+        source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
+
+        if ((op is "-" or "~") && SimdSupport.IsEligibleVector(type.BaseType, type.Rows, type.Columns))
+        {
+            source.WriteLine("public static {0} operator {1} ({0} val) => new {0}({1}val.AsSimdUnsafe());", type.TypeName, op);
+            return;
+        }
+
         var fields = type.Columns > 1 ? VectorType.MatrixFields : VectorType.VectorFields;
         var resultCount = type.Columns > 1 ? type.Columns : type.Rows;
 
@@ -137,8 +166,6 @@ public class UnaryOperatorWriter(VectorType type, string op, string opDesc) : IT
                     : $"{op}val.{fields[i]}"
             ));
 
-        source.WriteLine("/// {0}", opDesc);
-        source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         source.WriteLine("public static {0} operator {1} ({0} val) => new {0}({2});", type.TypeName, op, bodyStr);
     };
 }

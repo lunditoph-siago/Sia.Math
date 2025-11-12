@@ -101,7 +101,6 @@ public class ConversionWriter(VectorType type, BaseType sourceBaseType, bool isE
                         rhs = $"({fieldType}){rhs}";
                 }
 
-
                 source.WriteLine("this.{0} = {1};", fields[i], rhs);
             }
         }

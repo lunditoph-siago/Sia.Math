@@ -36,19 +36,26 @@ public partial class MathSourceGenerator
 
     private static void GenerateMulImplementations(MathOnlyCompositeWriter writer, BaseType type)
     {
-        // typenxk = mul(typenxm, typemxk)
+
         for (var n = 1; n <= 4; n++)
         {
             for (var m = 1; m <= 4; m++)
             {
                 for (var k = 1; k <= 4; k++)
                 {
-                    // mul(a,b): if a is vector it is treated as a row vector. if b is a vector it is treaded as a column vector.
 
                     if (n > 1 && m == 1)
-                        continue; // lhs cannot be column vector
+                        continue;
                     if (m == 1 && k > 1)
-                        continue; // rhs cannot be row vector
+                        continue;
+
+                    var lhsIsMatrix = n > 1 && m > 1;
+                    var rhsIsMatrix = m > 1 && k > 1;
+                    var lhsSquare = n > 1 && n == m;
+                    var rhsSquare = m > 1 && m == k;
+
+                    if (lhsIsMatrix && rhsIsMatrix && lhsSquare != rhsSquare)
+                        continue;
 
                     writer.Add(new MulWriter(type, (n, m), (m, k), GenerateMulType.Mul, false));
                 }

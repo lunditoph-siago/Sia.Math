@@ -12,6 +12,8 @@ public partial class MathSourceGenerator
         var compositeWriter = new CompositeWriter();
 
         compositeWriter.Add(new MemberVariablesWriter(vectorType));
+        compositeWriter.Add(new SimdInteropWriter(vectorType));
+        compositeWriter.Add(new ConstantsWriter(vectorType));
         compositeWriter.Add(new ConstructorsBuilder(vectorType).Build());
         compositeWriter.Add(new ConversionBuilder(vectorType).Build());
         compositeWriter.Add(new OperatorsBuilder(vectorType).Build());
@@ -22,6 +24,7 @@ public partial class MathSourceGenerator
         compositeWriter.Add(new DebuggerTypeProxyBuilder(vectorType).Build());
         compositeWriter.Add(new ShuffleBuilder(vectorType).Build());
         compositeWriter.Add(new InverseWriter(vectorType));
+        compositeWriter.Add(new TransposeWriter(vectorType));
 
         var typeSource = Generator.CreateFileSource(out var sourceBuilder);
 

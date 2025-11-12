@@ -18,6 +18,7 @@ public partial class MathSourceGenerator
 
         source.WriteLine("using System;");
         source.WriteLine("using System.Runtime.CompilerServices;");
+        source.WriteLine("using System.Runtime.Intrinsics;");
         source.WriteLine();
         source.WriteLine("#pragma warning disable 0660, 0661, 8981");
         source.WriteLine();
@@ -208,6 +209,12 @@ public partial class MathSourceGenerator
                     {
                         result.Add($"public static {name} dot({name} x, {name} y) => x * y;");
                     }
+                    else if (SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var baseName = type.ToBaseTypeName();
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {baseName} dot({name} x, {name} y) => {vectorClass}.Dot(x.AsSimd(), y.AsSimd());");
+                    }
                     else
                     {
                         var components = string.Join(" + ", Enumerable.Range(0, level)
@@ -230,6 +237,48 @@ public partial class MathSourceGenerator
                         { BaseType.UInt, dotFunc },
                         { BaseType.Float, dotFunc },
                         { BaseType.Double, dotFunc }
+                    }
+                ));
+
+                var lengthsqFunc = new FunctionInfo((1, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var baseName = type.ToBaseTypeName();
+
+                    result.Add(level == 1
+                        ? $"public static {baseName} lengthsq({name} x) => x * x;"
+                        : $"public static {baseName} lengthsq({name} x) => dot(x, x);");
+
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "lengthsq",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, lengthsqFunc },
+                        { BaseType.Double, lengthsqFunc }
+                    }
+                ));
+
+                var lengthFunc = new FunctionInfo((1, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var baseName = type.ToBaseTypeName();
+
+                    result.Add(level == 1
+                        ? $"public static {baseName} length({name} x) => abs(x);"
+                        : $"public static {baseName} length({name} x) => sqrt(dot(x, x));");
+
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "length",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, lengthFunc },
+                        { BaseType.Double, lengthFunc }
                     }
                 ));
 

@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Sia.Math.CodeGenerators/Sia.Math.CodeGenerators.csproj" />
+  <Project Path="Sia.Math.Tests/Sia.Math.Tests.csproj" />
+  <Project Path="Sia.Math/Sia.Math.csproj" />
+</Solution>

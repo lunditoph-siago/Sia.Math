@@ -62,7 +62,7 @@ public static class Generator
 
         source.WriteLine("[System.Serializable]");
 
-        source.WriteLine("public struct {0} : {1}", type.TypeName, string.Join(", ", inherts));
+        source.WriteLine("public partial struct {0} : {1}", type.TypeName, string.Join(", ", inherts));
 
         source.WriteLine("{");
 

@@ -34,6 +34,20 @@ public class MulWriter(BaseType type, (int Rows, int Columns) lhs, (int Rows, in
             _ => throw new ArgumentOutOfRangeException(nameof(mulType), mulType, null)
         };
 
+        var rhsIsSquareMatrix = rhs is { Rows: > 1 } && rhs.Rows == rhs.Columns;
+        var lhsIsSquareMatrix = lhs is { Rows: > 1 } && lhs.Rows == lhs.Columns;
+        var rowMajor = rhsIsSquareMatrix && (lhs.Rows == 1 || lhsIsSquareMatrix);
+
+        if (lhsIsSquareMatrix && rhs is { Columns: 1, Rows: > 1 })
+        {
+
+            var dotTerms = string.Join(", ", Enumerable.Range(0, lhs.Rows)
+                .Select(i => $"dot(a.{VectorType.MatrixFields[i]}, b)"));
+            source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
+            source.WriteLine("public static {0} {1}({2} a, {3} b) => new {0}({4});", resultType, name, lhsType, rhsType, dotTerms);
+            return;
+        }
+
         source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         source.WriteLine("public static {1} {0}({2} a, {3} b)", name, resultType, lhsType, rhsType);
         source.WriteLine("{");
@@ -46,19 +60,34 @@ public class MulWriter(BaseType type, (int Rows, int Columns) lhs, (int Rows, in
                         .Where(row => row < rhs.Rows || doTranslation)
                         .Select(row =>
                         {
-                            var lhsElement = lhs switch
-                            {
-                                { Rows: 1, Columns: 1 } => "a",
-                                { Rows: 1 } or { Columns: 1 } => $"a.{VectorType.VectorFields[row]}",
-                                _ => $"a.{VectorType.MatrixFields[row]}"
-                            };
+                            string lhsElement;
+                            string rhsElement;
 
-                            var rhsElement = rhs switch
+                            if (rowMajor)
                             {
-                                { Rows: 1, Columns: 1 } => "b",
-                                { Rows: 1 } or { Columns: 1 } => $"b.{VectorType.VectorFields[row]}",
-                                _ => $"b.{VectorType.MatrixFields[col]}.{VectorType.VectorFields[row]}"
-                            };
+                                lhsElement = lhs.Rows == 1
+                                    ? $"a.{VectorType.VectorFields[row]}"
+                                    : $"a.{VectorType.MatrixFields[col]}.{VectorType.VectorFields[row]}";
+                                rhsElement = lhs.Rows == 1
+                                    ? $"b.{VectorType.MatrixFields[row]}.{VectorType.VectorFields[col]}"
+                                    : $"b.{VectorType.MatrixFields[row]}";
+                            }
+                            else
+                            {
+                                lhsElement = lhs switch
+                                {
+                                    { Rows: 1, Columns: 1 } => "a",
+                                    { Rows: 1 } or { Columns: 1 } => $"a.{VectorType.VectorFields[row]}",
+                                    _ => $"a.{VectorType.MatrixFields[row]}"
+                                };
+
+                                rhsElement = rhs switch
+                                {
+                                    { Rows: 1, Columns: 1 } => "b",
+                                    { Rows: 1 } or { Columns: 1 } => $"b.{VectorType.VectorFields[row]}",
+                                    _ => $"b.{VectorType.MatrixFields[col]}.{VectorType.VectorFields[row]}"
+                                };
+                            }
 
                             return col < rhs.Rows ? $"{lhsElement} * {rhsElement}" : lhsElement;
                         });

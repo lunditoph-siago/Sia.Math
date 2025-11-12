@@ -324,6 +324,12 @@ public static partial class math
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool isfinite(quaternion q)
+    {
+        return all(isfinite(q.value));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float length(quaternion q)
     {
         return sqrt(dot(q.value, q.value));
