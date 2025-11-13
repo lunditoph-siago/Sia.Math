@@ -27,7 +27,7 @@ public class BinaryOperatorWriter(VectorType type, (int Rows, int Columns) lhs, 
         source.WriteLine("/// {0}", opDesc);
         source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
 
-        if (SimdSupport.IsEligibleVector(resultType, result.Rows, result.Columns) && SimdSupport.SupportsSimdOp(op))
+        if (SimdSupport.IsEligibleVector(resultType, result.Rows, result.Columns) && SimdSupport.SupportsSimdOp(op, resultType, result.Rows))
         {
             var lhsExpr = lhs.Rows == 1 ? SimdSupport.CreateBroadcast(resultType, result.Rows, "lhs") : "lhs.AsSimdUnsafe()";
             var rhsExpr = rhs.Rows == 1 ? SimdSupport.CreateBroadcast(resultType, result.Rows, "rhs") : "rhs.AsSimdUnsafe()";

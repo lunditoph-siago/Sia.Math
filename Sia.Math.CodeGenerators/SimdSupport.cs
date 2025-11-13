@@ -25,5 +25,13 @@ public static class SimdSupport
     public static string CreateBroadcast(BaseType baseType, int rows, string scalarExpr) =>
         $"{NativeVectorClassName(baseType, rows)}.Create({scalarExpr})";
 
-    public static bool SupportsSimdOp(string op) => op is "+" or "-" or "*" or "/" or "&" or "|" or "^";
+    public static bool SupportsSimdOp(string op, BaseType baseType, int rows)
+    {
+        if (op is not ("+" or "-" or "*" or "/" or "&" or "|" or "^")) return false;
+
+        if (op == "/" && baseType is BaseType.Int or BaseType.UInt && !IsExactFit(baseType, rows))
+            return false;
+
+        return true;
+    }
 }

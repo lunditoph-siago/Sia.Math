@@ -22,6 +22,8 @@ public record struct AffineTransform(float3 Translation, float3x3 RotationScale)
 
     public AffineTransform(float3x3 RotationScale) : this(float3.zero, RotationScale) { }
 
+    public AffineTransform(RigidTransform rigid) : this(rigid.Translation, rigid.Rotation) { }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator float4x4(AffineTransform m) =>
         new(new float4(m.RotationScale.c0, 0f), new float4(m.RotationScale.c1, 0f),
@@ -47,6 +49,14 @@ public record struct AffineTransform(float3 Translation, float3x3 RotationScale)
 
 public static partial class math
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static AffineTransform mul(float3x3 a, AffineTransform b) =>
+        new(mul(b.Translation, a), mul(b.RotationScale, a));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static AffineTransform mul(AffineTransform a, float3x3 b) =>
+        new(a.Translation, mul(a.RotationScale, b));
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint hash(AffineTransform v)
     {

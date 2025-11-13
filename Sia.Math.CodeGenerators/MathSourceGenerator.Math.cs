@@ -34,7 +34,9 @@ public partial class MathSourceGenerator
 
                     if (level == 1)
                     {
-                        result.Add($"public static {name} min({name} x, {name} y) => x < y ? x : y;");
+                        result.Add(type is BaseType.Float or BaseType.Double
+                            ? $"public static {name} min({name} x, {name} y) => isnan(y) ? x : (isnan(x) ? y : (x < y ? x : y));"
+                            : $"public static {name} min({name} x, {name} y) => x < y ? x : y;");
                     }
                     else
                     {
@@ -67,7 +69,9 @@ public partial class MathSourceGenerator
 
                     if (level == 1)
                     {
-                        result.Add($"public static {name} max({name} x, {name} y) => x > y ? x : y;");
+                        result.Add(type is BaseType.Float or BaseType.Double
+                            ? $"public static {name} max({name} x, {name} y) => isnan(y) ? x : (isnan(x) ? y : (x > y ? x : y));"
+                            : $"public static {name} max({name} x, {name} y) => x > y ? x : y;");
                     }
                     else
                     {
@@ -766,6 +770,29 @@ public partial class MathSourceGenerator
                     }
                 ));
 
+                var normalizesafeFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var minNormal = type == BaseType.Double ? "DBL_MIN_NORMAL" : "FLT_MIN_NORMAL";
+
+                    result.Add($"public static {name} normalizesafe({name} x, {name} defaultvalue = default)");
+                    result.Add("{");
+                    result.Add($"    var len = dot(x, x);");
+                    result.Add($"    return select(defaultvalue, x * rsqrt(len), len > {minNormal});");
+                    result.Add("}");
+
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "normalizesafe",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, normalizesafeFunc },
+                        { BaseType.Double, normalizesafeFunc }
+                    }
+                ));
+
                 var anyFunc = new FunctionInfo((2, 4), (type, level) =>
                 {
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
@@ -883,6 +910,36 @@ public partial class MathSourceGenerator
                     {
                         { BaseType.Float, sincosFunc },
                         { BaseType.Double, sincosFunc }
+                    }
+                ));
+
+                var radiansFunc = new FunctionInfo((1, 4), (type, level) =>
+                {
+                    var name = type.ToTypeName(1, level);
+                    var constant = type == BaseType.Double ? "TORADIANS_DBL" : "TORADIANS";
+                    return ["[MethodImpl(MethodImplOptions.AggressiveInlining)]", $"public static {name} radians({name} x) => x * {constant};"];
+                });
+                BuildFunction(source, new Function(
+                    "radians",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, radiansFunc },
+                        { BaseType.Double, radiansFunc }
+                    }
+                ));
+
+                var degreesFunc = new FunctionInfo((1, 4), (type, level) =>
+                {
+                    var name = type.ToTypeName(1, level);
+                    var constant = type == BaseType.Double ? "TODEGREES_DBL" : "TODEGREES";
+                    return ["[MethodImpl(MethodImplOptions.AggressiveInlining)]", $"public static {name} degrees({name} x) => x * {constant};"];
+                });
+                BuildFunction(source, new Function(
+                    "degrees",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, degreesFunc },
+                        { BaseType.Double, degreesFunc }
                     }
                 ));
 

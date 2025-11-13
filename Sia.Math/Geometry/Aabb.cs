@@ -9,9 +9,17 @@ public record struct Aabb(float3 Min, float3 Max)
 {
     public float3 Extents => Max - Min;
 
+    public float3 HalfExtents => (Max - Min) * 0.5f;
+
     public float3 Center => (Max + Min) * 0.5f;
 
     public bool IsValid => math.all(Min <= Max);
+
+    public static Aabb CreateFromCenterAndExtents(float3 center, float3 extents) =>
+        CreateFromCenterAndHalfExtents(center, extents * 0.5f);
+
+    public static Aabb CreateFromCenterAndHalfExtents(float3 center, float3 halfExtents) =>
+        new(center - halfExtents, center + halfExtents);
 
     public float SurfaceArea
     {
@@ -32,6 +40,12 @@ public record struct Aabb(float3 Min, float3 Max)
     {
         Min = math.max(Min, aabb.Min);
         Max = math.min(Max, aabb.Max);
+    }
+
+    public void Expand(float signedDistance)
+    {
+        Min -= signedDistance;
+        Max += signedDistance;
     }
 
     public void Include(float3 point)

@@ -16,11 +16,13 @@ public class SelectShuffleWriter(VectorType type) : IMathSourceWriter
         source.WriteLine("internal static {0} select_shuffle_component({1} a, {1} b, ShuffleComponent component) => component switch {{", type.BaseTypeName, type.TypeName);
         source.Indent++;
         {
-            foreach (var component in VectorType.ShuffleComponents.Take(type.Rows * 2))
+            var components = VectorType.ShuffleComponents.Take(type.Rows)
+                .Concat(VectorType.ShuffleComponents.Skip(4).Take(type.Rows));
+            foreach (var component in components)
             {
                 var index = Array.IndexOf(VectorType.ShuffleComponents, component);
-                var target = index >= type.Rows ? "b" : "a";
-                var fieldName = type.Rows > 1 ? $".{VectorType.VectorFields[index % type.Rows]}" : string.Empty;
+                var target = index >= 4 ? "b" : "a";
+                var fieldName = type.Rows > 1 ? $".{VectorType.VectorFields[index % 4]}" : string.Empty;
                 source.WriteLine($"ShuffleComponent.{component} => {target}{fieldName},");
             }
             source.WriteLine("_ => throw new System.ArgumentException($\"Invalid shuffle component: {component}\")");
