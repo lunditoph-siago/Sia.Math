@@ -20,7 +20,11 @@ public static class SimdSupport
     public static string NativeVectorClassName(BaseType baseType, int rows) =>
         UsesVector256(baseType, rows) ? "Vector256" : "Vector128";
 
-    public static bool IsExactFit(BaseType baseType, int rows) => rows == NativeLaneCount(baseType, rows);
+    public static bool IsExactFit(BaseType baseType, int rows) =>
+        rows == NativeLaneCount(baseType, rows);
+
+    public static bool IsPaddedFit(BaseType baseType, int rows) =>
+        rows == 3 && IsEligibleElement(baseType);
 
     public static string CreateBroadcast(BaseType baseType, int rows, string scalarExpr) =>
         $"{NativeVectorClassName(baseType, rows)}.Create({scalarExpr})";
@@ -29,7 +33,7 @@ public static class SimdSupport
     {
         if (op is not ("+" or "-" or "*" or "/" or "&" or "|" or "^")) return false;
 
-        if (op == "/" && baseType is BaseType.Int or BaseType.UInt && !IsExactFit(baseType, rows))
+        if (op == "/" && baseType is BaseType.Int or BaseType.UInt && !(IsExactFit(baseType, rows) || IsPaddedFit(baseType, rows)))
             return false;
 
         return true;

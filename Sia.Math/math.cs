@@ -284,6 +284,276 @@ public static partial class math
 
     #endregion
 
+    #region rounding
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float floor(float x) => global::System.MathF.Floor(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double floor(double x) => global::System.Math.Floor(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float ceil(float x) => global::System.MathF.Ceiling(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ceil(double x) => global::System.Math.Ceiling(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float round(float x) => global::System.MathF.Round(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double round(double x) => global::System.Math.Round(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float trunc(float x) => global::System.MathF.Truncate(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double trunc(double x) => global::System.Math.Truncate(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float frac(float x) => x - floor(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double frac(double x) => x - floor(x);
+
+    #endregion
+
+    #region sign
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float sign(float x) => (x > 0.0f ? 1.0f : 0.0f) - (x < 0.0f ? 1.0f : 0.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double sign(double x) => x == 0.0 ? 0.0 : (x > 0.0 ? 1.0 : 0.0) - (x < 0.0 ? 1.0 : 0.0);
+
+    #endregion
+
+    #region step / smoothstep
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float step(float y, float x) => select(0.0f, 1.0f, x >= y);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double step(double y, double x) => select(0.0, 1.0, x >= y);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float smoothstep(float a, float b, float x)
+    {
+        var t = saturate((x - a) / (b - a));
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double smoothstep(double a, double b, double x)
+    {
+        var t = saturate((x - a) / (b - a));
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    #endregion
+
+    #region fmod
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float fmod(float x, float y) => x % y;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double fmod(double x, double y) => x % y;
+
+    #endregion
+
+    #region remap
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float remap(float a, float b, float c, float d, float x) => lerp(c, d, unlerp(a, b, x));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double remap(double a, double b, double c, double d, double x) => lerp(c, d, unlerp(a, b, x));
+
+    #endregion
+
+    #region exp2 / exp10 / log2 / log10
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float exp2(float x) => exp(x * LN2);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double exp2(double x) => exp(x * LN2_DBL);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float exp10(float x) => exp(x * LN10);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double exp10(double x) => exp(x * LN10_DBL);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float log2(float x) => log(x) * LOG2E;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double log2(double x) => log(x) * LOG2E_DBL;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float log10(float x) => log(x) * LOG10E;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double log10(double x) => log(x) * LOG10E_DBL;
+
+    #endregion
+
+    #region atan2
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float atan2(float y, float x) => (float)global::System.Math.Atan2(y, x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double atan2(double y, double x) => global::System.Math.Atan2(y, x);
+
+    #endregion
+
+    #region ceilpow2 / floorlog2 / ceillog2
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ceilpow2(int x)
+    {
+        x -= 1;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x + 1;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint ceilpow2(uint x)
+    {
+        x -= 1u;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x + 1u;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ceillog2(int x) => 32 - lzcnt((uint)x - 1);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ceillog2(uint x) => 32 - lzcnt(x - 1u);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int floorlog2(int x) => 31 - lzcnt((uint)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int floorlog2(uint x) => 31 - lzcnt(x);
+
+    #endregion
+
+    #region bit manipulation
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int countbits(int x) => countbits((uint)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int countbits(uint x)
+    {
+        x = x - ((x >> 1) & 0x55555555u);
+        x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
+        return (int)((((x + (x >> 4)) & 0x0F0F0F0Fu) * 0x01010101u) >> 24);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int countbits(long x) => countbits((ulong)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int countbits(ulong x)
+    {
+        x = x - ((x >> 1) & 0x5555555555555555ul);
+        x = (x & 0x3333333333333333ul) + ((x >> 2) & 0x3333333333333333ul);
+        return (int)((((x + (x >> 4)) & 0x0F0F0F0F0F0F0F0Ful) * 0x0101010101010101ul) >> 56);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int lzcnt(int x) => lzcnt((uint)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int lzcnt(uint x)
+    {
+        if (x == 0u) return 32;
+        LongDoubleUnion u;
+        u.doubleValue = 0.0;
+        u.longValue = 0x4330000000000000L + x;
+        u.doubleValue -= 4503599627370496.0;
+        return 0x41E - (int)(u.longValue >> 52);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int lzcnt(long x) => lzcnt((ulong)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int lzcnt(ulong x)
+    {
+        if (x == 0ul) return 64;
+        var xh = (uint)(x >> 32);
+        return xh != 0u ? lzcnt(xh) : 32 + lzcnt((uint)x);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int tzcnt(int x) => tzcnt((uint)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int tzcnt(uint x)
+    {
+        if (x == 0u) return 32;
+        x &= unchecked(0u - x);
+        LongDoubleUnion u;
+        u.doubleValue = 0.0;
+        u.longValue = 0x4330000000000000L + x;
+        u.doubleValue -= 4503599627370496.0;
+        return (int)(u.longValue >> 52) - 0x3FF;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int tzcnt(long x) => tzcnt((ulong)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int tzcnt(ulong x)
+    {
+        if (x == 0ul) return 64;
+        var xl = (uint)x;
+        return xl != 0u ? tzcnt(xl) : 32 + tzcnt((uint)(x >> 32));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int reversebits(int x) => (int)reversebits((uint)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint reversebits(uint x)
+    {
+        x = ((x >> 1) & 0x55555555u) | ((x & 0x55555555u) << 1);
+        x = ((x >> 2) & 0x33333333u) | ((x & 0x33333333u) << 2);
+        x = ((x >> 4) & 0x0F0F0F0Fu) | ((x & 0x0F0F0F0Fu) << 4);
+        x = ((x >> 8) & 0x00FF00FFu) | ((x & 0x00FF00FFu) << 8);
+        return (x >> 16) | (x << 16);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long reversebits(long x) => (long)reversebits((ulong)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong reversebits(ulong x)
+    {
+        x = ((x >> 1) & 0x5555555555555555ul) | ((x & 0x5555555555555555ul) << 1);
+        x = ((x >> 2) & 0x3333333333333333ul) | ((x & 0x3333333333333333ul) << 2);
+        x = ((x >> 4) & 0x0F0F0F0F0F0F0F0Ful) | ((x & 0x0F0F0F0F0F0F0F0Ful) << 4);
+        x = ((x >> 8) & 0x00FF00FF00FF00FFul) | ((x & 0x00FF00FF00FF00FFul) << 8);
+        x = ((x >> 16) & 0x0000FFFF0000FFFFul) | ((x & 0x0000FFFF0000FFFFul) << 16);
+        return (x >> 32) | (x << 32);
+    }
+
+    #endregion
+
     #region cross
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

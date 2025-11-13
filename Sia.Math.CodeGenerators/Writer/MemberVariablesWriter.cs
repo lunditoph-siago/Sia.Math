@@ -32,6 +32,9 @@ public class MemberVariablesWriter(VectorType type) : ITypeSourceWriter
                     : [$"public {type.BaseTypeName} {VectorType.VectorFields[i]};"]);
 
             foreach (var declaration in rowDeclarations) source.WriteLine(declaration);
+
+            if (type.Rows == 3 && SimdSupport.IsEligibleElement(type.BaseType))
+                source.WriteLine($"internal {type.BaseTypeName} __pad;");
         }
     };
 }

@@ -33,7 +33,7 @@ public class InverseWriter(VectorType type) : IMathSourceWriter
                 source.WriteLineNoTabs(string.Empty);
                 source.WriteLine("var det = a * d - b * c;");
                 source.WriteLineNoTabs(string.Empty);
-                source.WriteLine("return new {0}2x2(d, -b, -c, a) * ({1} / det);", typeName, one);
+                source.WriteLine("return new {0}2x2(d, -c, -b, a) * ({1} / det);", typeName, one);
             }
             source.Indent--;
             source.WriteLine("}");

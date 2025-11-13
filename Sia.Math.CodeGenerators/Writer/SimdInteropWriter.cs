@@ -20,7 +20,7 @@ public class SimdInteropWriter(VectorType type) : ITypeSourceWriter
         var vectorName = SimdSupport.NativeVectorTypeName(type.BaseType, type.Rows);
         var vectorClass = SimdSupport.NativeVectorClassName(type.BaseType, type.Rows);
         var laneCount = SimdSupport.NativeLaneCount(type.BaseType, type.Rows);
-        var exactFit = SimdSupport.IsExactFit(type.BaseType, type.Rows);
+        var exactFit = SimdSupport.IsExactFit(type.BaseType, type.Rows) || SimdSupport.IsPaddedFit(type.BaseType, type.Rows);
 
         source.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         if (exactFit)

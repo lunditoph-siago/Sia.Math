@@ -38,6 +38,11 @@ public partial class MathSourceGenerator
                             ? $"public static {name} min({name} x, {name} y) => isnan(y) ? x : (isnan(x) ? y : (x < y ? x : y));"
                             : $"public static {name} min({name} x, {name} y) => x < y ? x : y;");
                     }
+                    else if (type is BaseType.Int or BaseType.UInt && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} min({name} x, {name} y) => new {name}({vectorClass}.Min(x.AsSimd(), y.AsSimd()));");
+                    }
                     else
                     {
                         var components = string.Join(", ", Enumerable.Range(0, level)
@@ -73,6 +78,11 @@ public partial class MathSourceGenerator
                             ? $"public static {name} max({name} x, {name} y) => isnan(y) ? x : (isnan(x) ? y : (x > y ? x : y));"
                             : $"public static {name} max({name} x, {name} y) => x > y ? x : y;");
                     }
+                    else if (type is BaseType.Int or BaseType.UInt && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} max({name} x, {name} y) => new {name}({vectorClass}.Max(x.AsSimd(), y.AsSimd()));");
+                    }
                     else
                     {
                         var components = string.Join(", ", Enumerable.Range(0, level)
@@ -102,7 +112,19 @@ public partial class MathSourceGenerator
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
 
-                    result.Add($"public static {name} lerp({name} a, {name} b, {name} s) => a + s * (b - a);");
+                    if (level >= 2 && type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} lerp({name} a, {name} b, {name} s) => new {name}(Vector128.Lerp(a.AsSimd(), b.AsSimd(), s.AsSimd()));");
+                    }
+                    else if (level >= 2 && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} lerp({name} a, {name} b, {name} s) => new {name}({vectorClass}.FusedMultiplyAdd(s.AsSimd(), b.AsSimd() - a.AsSimd(), a.AsSimd()));");
+                    }
+                    else
+                    {
+                        result.Add($"public static {name} lerp({name} a, {name} b, {name} s) => a + s * (b - a);");
+                    }
 
                     return result.ToArray();
                 });
@@ -138,7 +160,19 @@ public partial class MathSourceGenerator
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
 
-                    result.Add($"public static {name} clamp({name} v, {name} a, {name} b) => max(a, min(b, v));");
+                    if (level >= 2 && type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} clamp({name} v, {name} a, {name} b) => new {name}(Vector128.Clamp(v.AsSimd(), a.AsSimd(), b.AsSimd()));");
+                    }
+                    else if (level >= 2 && type is BaseType.Int or BaseType.UInt && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} clamp({name} v, {name} a, {name} b) => new {name}({vectorClass}.Max(a.AsSimd(), {vectorClass}.Min(b.AsSimd(), v.AsSimd())));");
+                    }
+                    else
+                    {
+                        result.Add($"public static {name} clamp({name} v, {name} a, {name} b) => max(a, min(b, v));");
+                    }
 
                     return result.ToArray();
                 });
@@ -180,17 +214,34 @@ public partial class MathSourceGenerator
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
 
-                    result.Add(type switch
+                    if (level == 1)
                     {
-                        BaseType.Int => $"public static {name} abs({name} x) => max(-x, x);",
-                        BaseType.Float => $"public static {name} abs({name} x) => asfloat(asuint(x) & 0x7FFFFFFF);",
-                        BaseType.Double => level == 1
-                            ? $"public static {name} abs({name} x) => asdouble(asulong(x) & 0x7FFFFFFFFFFFFFFF);"
-                            : $"public static {name} abs({name} x) => new({string.Join(", ", Enumerable.Range(0, level)
-                                .Select(i => 
-                                    $"asdouble(asulong(x.{VectorType.Components[i]}) & 0x7FFFFFFFFFFFFFFF)"))});",
-                        _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
-                    });
+                        result.Add(type switch
+                        {
+                            BaseType.Int => $"public static {name} abs({name} x) => max(-x, x);",
+                            BaseType.Float => $"public static {name} abs({name} x) => asfloat(asuint(x) & 0x7FFFFFFF);",
+                            BaseType.Double => $"public static {name} abs({name} x) => asdouble(asulong(x) & 0x7FFFFFFFFFFFFFFF);",
+                            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+                        });
+                    }
+                    else if (type is BaseType.Int or BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} abs({name} x) => new {name}({vectorClass}.Abs(x.AsSimd()));");
+                    }
+                    else
+                    {
+                        result.Add(type switch
+                        {
+                            BaseType.Int => $"public static {name} abs({name} x) => new {name}({string.Join(", ", Enumerable.Range(0, level)
+                                .Select(i => $"abs(x.{VectorType.Components[i]})"))});",
+                            BaseType.Float => $"public static {name} abs({name} x) => new({string.Join(", ", Enumerable.Range(0, level)
+                                .Select(i => $"asfloat(asuint(x.{VectorType.Components[i]}) & 0x7FFFFFFF)"))});",
+                            BaseType.Double => $"public static {name} abs({name} x) => new({string.Join(", ", Enumerable.Range(0, level)
+                                .Select(i => $"asdouble(asulong(x.{VectorType.Components[i]}) & 0x7FFFFFFFFFFFFFFF)"))});",
+                            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+                        });
+                    }
 
                     return result.ToArray();
                 });
@@ -400,6 +451,10 @@ public partial class MathSourceGenerator
                         };
                         result.Add($"public static {name} cos({name} x) => {template};");
                     }
+                    else if (type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} cos({name} x) => new {name}(Vector128.Cos(x.AsSimd()));");
+                    }
                     else
                     {
                         var components = string.Join(", ", Enumerable.Range(0, level)
@@ -498,6 +553,10 @@ public partial class MathSourceGenerator
                             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
                         };
                         result.Add($"public static {name} sin({name} x) => {template};");
+                    }
+                    else if (type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} sin({name} x) => new {name}(Vector128.Sin(x.AsSimd()));");
                     }
                     else
                     {
@@ -650,6 +709,10 @@ public partial class MathSourceGenerator
                         };
                         result.Add($"public static {name} exp({name} x) => {template};");
                     }
+                    else if (type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} exp({name} x) => new {name}(Vector128.Exp(x.AsSimd()));");
+                    }
                     else
                     {
                         var components = string.Join(", ", Enumerable.Range(0, level)
@@ -682,6 +745,10 @@ public partial class MathSourceGenerator
                             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
                         };
                         result.Add($"public static {name} log({name} x) => {template};");
+                    }
+                    else if (type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} log({name} x) => new {name}(Vector128.Log(x.AsSimd()));");
                     }
                     else
                     {
@@ -716,6 +783,11 @@ public partial class MathSourceGenerator
                         };
                         result.Add($"public static {name} sqrt({name} x) => {template};");
                     }
+                    else if (SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} sqrt({name} x) => new {name}({vectorClass}.Sqrt(x.AsSimd()));");
+                    }
                     else
                     {
                         var components = string.Join(", ", Enumerable.Range(0, level)
@@ -739,7 +811,16 @@ public partial class MathSourceGenerator
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
 
-                    result.Add($"public static {name} rsqrt({name} x) => 1.0f / sqrt(x);");
+                    if (SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorType = SimdSupport.NativeVectorTypeName(type, level);
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} rsqrt({name} x) => new {name}({vectorType}.One / {vectorClass}.Sqrt(x.AsSimd()));");
+                    }
+                    else
+                    {
+                        result.Add($"public static {name} rsqrt({name} x) => 1.0f / sqrt(x);");
+                    }
 
                     return result.ToArray();
                 });
@@ -797,21 +878,30 @@ public partial class MathSourceGenerator
                 {
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
-                    
-                    var components = string.Join(" || ", Enumerable.Range(0, level)
-                        .Select(i =>
-                        {
-                            var member = VectorType.Components[i];
-                            return type switch
+
+                    if (type != BaseType.Bool && SimdSupport.IsEligibleVector(type, level, 1) && SimdSupport.IsExactFit(type, level))
+                    {
+                        var zero = type.ToTypedLiteral(0);
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static bool any({name} x) => !{vectorClass}.All(x.AsSimd(), {zero});");
+                    }
+                    else
+                    {
+                        var components = string.Join(" || ", Enumerable.Range(0, level)
+                            .Select(i =>
                             {
-                                BaseType.Bool => $"x.{member}",
-                                BaseType.Int or BaseType.UInt => $"x.{member} != 0.0",
-                                BaseType.Float => $"x.{member} != 0.0f",
-                                BaseType.Double => $"x.{member} != 0.0",
-                                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
-                            };
-                        }));
-                    result.Add($"public static bool any({name} x) => {components};");
+                                var member = VectorType.Components[i];
+                                return type switch
+                                {
+                                    BaseType.Bool => $"x.{member}",
+                                    BaseType.Int or BaseType.UInt => $"x.{member} != 0.0",
+                                    BaseType.Float => $"x.{member} != 0.0f",
+                                    BaseType.Double => $"x.{member} != 0.0",
+                                    _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+                                };
+                            }));
+                        result.Add($"public static bool any({name} x) => {components};");
+                    }
 
                     return result.ToArray();
                 });
@@ -831,21 +921,30 @@ public partial class MathSourceGenerator
                 {
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
-                    
-                    var components = string.Join(" && ", Enumerable.Range(0, level)
-                        .Select(i =>
-                        {
-                            var member = VectorType.Components[i];
-                            return type switch
+
+                    if (type != BaseType.Bool && SimdSupport.IsEligibleVector(type, level, 1) && SimdSupport.IsExactFit(type, level))
+                    {
+                        var zero = type.ToTypedLiteral(0);
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static bool all({name} x) => {vectorClass}.None(x.AsSimd(), {zero});");
+                    }
+                    else
+                    {
+                        var components = string.Join(" && ", Enumerable.Range(0, level)
+                            .Select(i =>
                             {
-                                BaseType.Bool => $"x.{member}",
-                                BaseType.Int or BaseType.UInt => $"x.{member} != 0.0",
-                                BaseType.Float => $"x.{member} != 0.0f",
-                                BaseType.Double => $"x.{member} != 0.0",
-                                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
-                            };
-                        }));
-                    result.Add($"public static bool all({name} x) => {components};");
+                                var member = VectorType.Components[i];
+                                return type switch
+                                {
+                                    BaseType.Bool => $"x.{member}",
+                                    BaseType.Int or BaseType.UInt => $"x.{member} != 0.0",
+                                    BaseType.Float => $"x.{member} != 0.0f",
+                                    BaseType.Double => $"x.{member} != 0.0",
+                                    _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+                                };
+                            }));
+                        result.Add($"public static bool all({name} x) => {components};");
+                    }
 
                     return result.ToArray();
                 });
@@ -900,7 +999,19 @@ public partial class MathSourceGenerator
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
 
-                    result.Add($"public static void sincos({name} v, out {name} s, out {name} c) {{ s = sin(v); c = cos(v); }}");
+                    if (type == BaseType.Float && level >= 2 && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static void sincos({name} v, out {name} s, out {name} c)");
+                        result.Add("{");
+                        result.Add("    var (sin, cos) = Vector128.SinCos(v.AsSimd());");
+                        result.Add($"    s = new {name}(sin);");
+                        result.Add($"    c = new {name}(cos);");
+                        result.Add("}");
+                    }
+                    else
+                    {
+                        result.Add($"public static void sincos({name} v, out {name} s, out {name} c) {{ s = sin(v); c = cos(v); }}");
+                    }
 
                     return result.ToArray();
                 });
@@ -915,6 +1026,8 @@ public partial class MathSourceGenerator
 
                 var radiansFunc = new FunctionInfo((1, 4), (type, level) =>
                 {
+                    if (level >= 2 && type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                        return ["[MethodImpl(MethodImplOptions.AggressiveInlining)]", $"public static {type.ToTypeName(1, level)} radians({type.ToTypeName(1, level)} x) => new(Vector128.DegreesToRadians(x.AsSimd()));"];
                     var name = type.ToTypeName(1, level);
                     var constant = type == BaseType.Double ? "TORADIANS_DBL" : "TORADIANS";
                     return ["[MethodImpl(MethodImplOptions.AggressiveInlining)]", $"public static {name} radians({name} x) => x * {constant};"];
@@ -930,6 +1043,8 @@ public partial class MathSourceGenerator
 
                 var degreesFunc = new FunctionInfo((1, 4), (type, level) =>
                 {
+                    if (level >= 2 && type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                        return ["[MethodImpl(MethodImplOptions.AggressiveInlining)]", $"public static {type.ToTypeName(1, level)} degrees({type.ToTypeName(1, level)} x) => new(Vector128.RadiansToDegrees(x.AsSimd()));"];
                     var name = type.ToTypeName(1, level);
                     var constant = type == BaseType.Double ? "TODEGREES_DBL" : "TODEGREES";
                     return ["[MethodImpl(MethodImplOptions.AggressiveInlining)]", $"public static {name} degrees({name} x) => x * {constant};"];
@@ -948,9 +1063,17 @@ public partial class MathSourceGenerator
                     List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
                     var name = type.ToTypeName(1, level);
 
-                    var components = string.Join(" + ", Enumerable.Range(0, level)
-                        .Select(i => $"x.{VectorType.Components[i]}"));
-                    result.Add($"public static {type.ToBaseTypeName()} csum({name} x) => {components};");
+                    if (SimdSupport.IsEligibleVector(type, level, 1) && SimdSupport.IsExactFit(type, level))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {type.ToBaseTypeName()} csum({name} x) => {vectorClass}.Sum(x.AsSimd());");
+                    }
+                    else
+                    {
+                        var components = string.Join(" + ", Enumerable.Range(0, level)
+                            .Select(i => $"x.{VectorType.Components[i]}"));
+                        result.Add($"public static {type.ToBaseTypeName()} csum({name} x) => {components};");
+                    }
 
                     return result.ToArray();
                 });
@@ -962,6 +1085,446 @@ public partial class MathSourceGenerator
                         { BaseType.UInt, csumFunc },
                         { BaseType.Float, csumFunc },
                         { BaseType.Double, csumFunc }
+                    }
+                ));
+
+                var floorFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"floor(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} floor({name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "floor",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, floorFunc },
+                        { BaseType.Double, floorFunc }
+                    }
+                ));
+
+                var ceilFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"ceil(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} ceil({name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "ceil",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, ceilFunc },
+                        { BaseType.Double, ceilFunc }
+                    }
+                ));
+
+                var roundFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+
+                    if (type == BaseType.Float && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        result.Add($"public static {name} round({name} x) => new {name}(Vector128.Round(x.AsSimd()));");
+                    }
+                    else
+                    {
+                        var components = string.Join(", ", Enumerable.Range(0, level)
+                            .Select(i => $"round(x.{VectorType.Components[i]})"));
+                        result.Add($"public static {name} round({name} x) => new {name}({components});");
+                    }
+
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "round",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, roundFunc },
+                        { BaseType.Double, roundFunc }
+                    }
+                ));
+
+                var truncFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+
+                    if (SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} trunc({name} x) => new {name}({vectorClass}.Truncate(x.AsSimd()));");
+                    }
+                    else
+                    {
+                        var components = string.Join(", ", Enumerable.Range(0, level)
+                            .Select(i => $"trunc(x.{VectorType.Components[i]})"));
+                        result.Add($"public static {name} trunc({name} x) => new {name}({components});");
+                    }
+
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "trunc",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, truncFunc },
+                        { BaseType.Double, truncFunc }
+                    }
+                ));
+
+                var fracFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"frac(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} frac({name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "frac",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, fracFunc },
+                        { BaseType.Double, fracFunc }
+                    }
+                ));
+
+                var signFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"sign(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} sign({name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "sign",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, signFunc },
+                        { BaseType.Double, signFunc }
+                    }
+                ));
+
+                var stepFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var zero = type.ToTypedLiteral(0);
+                    var one = type.ToTypedLiteral(1);
+                    result.Add($"public static {name} step({name} y, {name} x) => select({zero}, {one}, x >= y);");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "step",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, stepFunc },
+                        { BaseType.Double, stepFunc }
+                    }
+                ));
+
+                var smoothstepFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"smoothstep(a.{VectorType.Components[i]}, b.{VectorType.Components[i]}, x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} smoothstep({name} a, {name} b, {name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "smoothstep",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, smoothstepFunc },
+                        { BaseType.Double, smoothstepFunc }
+                    }
+                ));
+
+                var madFunc = new FunctionInfo((1, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+
+                    if (level >= 2 && type is BaseType.Float or BaseType.Double && SimdSupport.IsEligibleVector(type, level, 1))
+                    {
+                        var vectorClass = SimdSupport.NativeVectorClassName(type, level);
+                        result.Add($"public static {name} mad({name} a, {name} b, {name} c) => new {name}({vectorClass}.FusedMultiplyAdd(a.AsSimd(), b.AsSimd(), c.AsSimd()));");
+                    }
+                    else
+                    {
+                        result.Add($"public static {name} mad({name} a, {name} b, {name} c) => a * b + c;");
+                    }
+
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "mad",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, madFunc },
+                        { BaseType.UInt, madFunc },
+                        { BaseType.Float, madFunc },
+                        { BaseType.Double, madFunc }
+                    }
+                ));
+
+                var fmodFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    result.Add($"public static {name} fmod({name} x, {name} y) => x % y;");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "fmod",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, fmodFunc },
+                        { BaseType.Double, fmodFunc }
+                    }
+                ));
+
+                var remapFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    result.Add($"public static {name} remap({name} a, {name} b, {name} c, {name} d, {name} x) => lerp(c, d, unlerp(a, b, x));");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "remap",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, remapFunc },
+                        { BaseType.Double, remapFunc }
+                    }
+                ));
+
+                var exp2Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ln2 = type == BaseType.Double ? "LN2_DBL" : "LN2";
+                    result.Add($"public static {name} exp2({name} x) => exp(x * {ln2});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "exp2",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, exp2Func },
+                        { BaseType.Double, exp2Func }
+                    }
+                ));
+
+                var exp10Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ln10 = type == BaseType.Double ? "LN10_DBL" : "LN10";
+                    result.Add($"public static {name} exp10({name} x) => exp(x * {ln10});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "exp10",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, exp10Func },
+                        { BaseType.Double, exp10Func }
+                    }
+                ));
+
+                var log2Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var log2e = type == BaseType.Double ? "LOG2E_DBL" : "LOG2E";
+                    result.Add($"public static {name} log2({name} x) => log(x) * {log2e};");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "log2",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, log2Func },
+                        { BaseType.Double, log2Func }
+                    }
+                ));
+
+                var log10Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var log10e = type == BaseType.Double ? "LOG10E_DBL" : "LOG10E";
+                    result.Add($"public static {name} log10({name} x) => log(x) * {log10e};");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "log10",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, log10Func },
+                        { BaseType.Double, log10Func }
+                    }
+                ));
+
+                var atan2Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"atan2(y.{VectorType.Components[i]}, x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} atan2({name} y, {name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "atan2",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Float, atan2Func },
+                        { BaseType.Double, atan2Func }
+                    }
+                ));
+
+                var ceilpow2Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"ceilpow2(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} ceilpow2({name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "ceilpow2",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, ceilpow2Func },
+                        { BaseType.UInt, ceilpow2Func }
+                    }
+                ));
+
+                var floorlog2Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ret = "int" + level;
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"floorlog2(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {ret} floorlog2({name} x) => new {ret}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "floorlog2",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, floorlog2Func },
+                        { BaseType.UInt, floorlog2Func }
+                    }
+                ));
+
+                var ceillog2Func = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ret = "int" + level;
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"ceillog2(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {ret} ceillog2({name} x) => new {ret}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "ceillog2",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, ceillog2Func },
+                        { BaseType.UInt, ceillog2Func }
+                    }
+                ));
+
+                var countbitsFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ret = "int" + level;
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"countbits(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {ret} countbits({name} x) => new {ret}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "countbits",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, countbitsFunc },
+                        { BaseType.UInt, countbitsFunc }
+                    }
+                ));
+
+                var lzcntFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ret = "int" + level;
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"lzcnt(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {ret} lzcnt({name} x) => new {ret}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "lzcnt",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, lzcntFunc },
+                        { BaseType.UInt, lzcntFunc }
+                    }
+                ));
+
+                var tzcntFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var ret = "int" + level;
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"tzcnt(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {ret} tzcnt({name} x) => new {ret}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "tzcnt",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, tzcntFunc },
+                        { BaseType.UInt, tzcntFunc }
+                    }
+                ));
+
+                var reversebitsFunc = new FunctionInfo((2, 4), (type, level) =>
+                {
+                    List<string> result = ["[MethodImpl(MethodImplOptions.AggressiveInlining)]"];
+                    var name = type.ToTypeName(1, level);
+                    var components = string.Join(", ", Enumerable.Range(0, level)
+                        .Select(i => $"reversebits(x.{VectorType.Components[i]})"));
+                    result.Add($"public static {name} reversebits({name} x) => new {name}({components});");
+                    return result.ToArray();
+                });
+                BuildFunction(source, new Function(
+                    "reversebits",
+                    new Dictionary<BaseType, FunctionInfo>
+                    {
+                        { BaseType.Int, reversebitsFunc },
+                        { BaseType.UInt, reversebitsFunc }
                     }
                 ));
             }

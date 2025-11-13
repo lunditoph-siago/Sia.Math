@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Sia.Math.CodeGenerators.Writer;
 
 namespace Sia.Math.CodeGenerators;
@@ -31,7 +31,7 @@ public partial class MathSourceGenerator
             }
         }
 
-        context.AddSource("matrix.g.cs", builder.ToString());    
+        context.AddSource("matrix.g.cs", builder.ToString());
     }
 
     private static void GenerateMulImplementations(MathOnlyCompositeWriter writer, BaseType type)
@@ -43,7 +43,6 @@ public partial class MathSourceGenerator
             {
                 for (var k = 1; k <= 4; k++)
                 {
-
                     if (n > 1 && m == 1)
                         continue;
                     if (m == 1 && k > 1)

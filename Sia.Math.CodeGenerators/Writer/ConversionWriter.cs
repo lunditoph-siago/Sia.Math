@@ -103,6 +103,8 @@ public class ConversionWriter(VectorType type, BaseType sourceBaseType, bool isE
 
                 source.WriteLine("this.{0} = {1};", fields[i], rhs);
             }
+            if (type.Rows == 3 && type.Columns == 1 && SimdSupport.IsEligibleElement(type.BaseType))
+                source.WriteLine("this.__pad = 0;");
         }
         source.Indent--;
         source.WriteLine("}");

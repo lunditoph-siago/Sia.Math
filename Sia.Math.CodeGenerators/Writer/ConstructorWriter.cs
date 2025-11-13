@@ -35,6 +35,8 @@ public class VectorConstructorWriter(VectorType type, int numParameters, int[] p
                     componentIndex++;
                 }
             }
+            if (type.Rows == 3 && type.Columns == 1 && SimdSupport.IsEligibleElement(type.BaseType))
+                source.WriteLine("this.__pad = 0;");
         }
     };
 
@@ -176,13 +178,9 @@ public class MatrixRowConstructorWriter(VectorType type) : ICompositeWriter
         using (Generator.GenerateInConstructor(source, type.TypeName, m_TypeParams))
         {
 
-            var isSquare = type.Rows == type.Columns;
             var assignments = VectorType.MatrixFields.Take(type.Columns)
-                .Select((fieldName, i) => isSquare
-                    ? $"this.{fieldName} = new {type.BaseType.ToTypeName(type.Columns, 1)}({
-                        string.Join(", ", Enumerable.Range(0, type.Columns).Select(col => $"m{i}{col}"))
-                    });"
-                    : $"this.{fieldName} = new {type.BaseType.ToTypeName(type.Rows, 1)}({
+                .Select((fieldName, i) =>
+                    $"this.{fieldName} = new {type.BaseType.ToTypeName(type.Rows, 1)}({
                         string.Join(", ", Enumerable.Range(0, type.Rows).Select(row => $"m{row}{i}"))
                     });");
 
