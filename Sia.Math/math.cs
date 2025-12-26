@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 
 #pragma warning disable 8981 
 
@@ -557,10 +558,26 @@ public static partial class math
     #region cross
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 cross(float3 x, float3 y) => (x * y.yzx - x.yzx * y).yzx;
+    public static float3 cross(float3 x, float3 y)
+    {
+        var xv = x.AsSimdUnsafe();
+        var yv = y.AsSimdUnsafe();
+        var shuf = Vector128.Create(1, 2, 0, 3);
+        var x1 = Vector128.Shuffle(xv, shuf);
+        var y1 = Vector128.Shuffle(yv, shuf);
+        return new float3(Vector128.Shuffle(xv * y1 - x1 * yv, shuf));
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double3 cross(double3 x, double3 y) => (x * y.yzx - x.yzx * y).yzx;
+    public static double3 cross(double3 x, double3 y)
+    {
+        var xv = x.AsSimdUnsafe();
+        var yv = y.AsSimdUnsafe();
+        var shuf = Vector256.Create(1L, 2L, 0L, 3L);
+        var x1 = Vector256.Shuffle(xv, shuf);
+        var y1 = Vector256.Shuffle(yv, shuf);
+        return new double3(Vector256.Shuffle(xv * y1 - x1 * yv, shuf));
+    }
 
     #endregion
 

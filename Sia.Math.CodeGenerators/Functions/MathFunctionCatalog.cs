@@ -84,7 +84,7 @@ public static class MathFunctionCatalog
             var name = sig.Shape.TypeName;
             if (sig.Dimension == 1)
                 return [Attr, sig.Type == BaseType.Float
-                    ? $"public static {name} sqrt({name} x) => (float)System.Math.Sqrt(x);"
+                    ? $"public static {name} sqrt({name} x) => System.MathF.Sqrt(x);"
                     : $"public static {name} sqrt({name} x) => System.Math.Sqrt(x);"];
             if (sig.Shape.IsSimdEligible)
             {
@@ -116,12 +116,19 @@ public static class MathFunctionCatalog
         Fn("lerp", [BaseType.Float, BaseType.Double], (1, 4), sig =>
         {
             var name = sig.Shape.TypeName;
+            var scalar = sig.Type.ToBaseTypeName();
             if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}(Vector128.Lerp(a.AsSimd(), b.AsSimd(), s.AsSimd()));"];
+                return [
+                    Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}(Vector128.Lerp(a.AsSimd(), b.AsSimd(), s.AsSimd()));",
+                    Attr, $"public static {name} lerp({name} a, {name} b, {scalar} s) => new {name}(Vector128.Lerp(a.AsSimd(), b.AsSimd(), Vector128.Create(s)));"
+                ];
             if (sig.Dimension >= 2 && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}({vc}.FusedMultiplyAdd(s.AsSimd(), b.AsSimd() - a.AsSimd(), a.AsSimd()));"];
+                return [
+                    Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}({vc}.FusedMultiplyAdd(s.AsSimd(), b.AsSimd() - a.AsSimd(), a.AsSimd()));",
+                    Attr, $"public static {name} lerp({name} a, {name} b, {scalar} s) => new {name}({vc}.FusedMultiplyAdd({vc}.Create(s), b.AsSimd() - a.AsSimd(), a.AsSimd()));"
+                ];
             }
             return [Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => a + s * (b - a);"];
         }),
@@ -218,8 +225,7 @@ public static class MathFunctionCatalog
             }
             var cond = string.Join(" || ", Range(sig.Dimension).Select(i =>
                 sig.Type == BaseType.Bool ? $"x.{TypeShape.Components[i]}" :
-                sig.Type.ToBaseTypeName() == "float" ? $"x.{TypeShape.Components[i]} != 0.0f" :
-                $"x.{TypeShape.Components[i]} != 0.0"));
+                $"x.{TypeShape.Components[i]} != {sig.Type.ToTypedLiteral(0)}"));
             return [Attr, $"public static bool any({name} x) => {cond};"];
         }),
 
@@ -234,19 +240,21 @@ public static class MathFunctionCatalog
             }
             var cond = string.Join(" && ", Range(sig.Dimension).Select(i =>
                 sig.Type == BaseType.Bool ? $"x.{TypeShape.Components[i]}" :
-                sig.Type.ToBaseTypeName() == "float" ? $"x.{TypeShape.Components[i]} != 0.0f" :
-                $"x.{TypeShape.Components[i]} != 0.0"));
+                $"x.{TypeShape.Components[i]} != {sig.Type.ToTypedLiteral(0)}"));
             return [Attr, $"public static bool all({name} x) => {cond};"];
         }),
 
         Fn("select", [BaseType.Int, BaseType.UInt, BaseType.Float, BaseType.Double], (1, 4), sig =>
         {
-            var test = BaseType.Bool.ToTypeName(1, sig.Dimension);
+            var maskType = BaseType.Bool.ToTypeName(1, sig.Dimension);
             var name = sig.Shape.TypeName;
             if (sig.Dimension == 1)
-                return [Attr, $"public static {name} select({name} a, {name} b, {test} test) => test ? b : a;"];
+                return [Attr, $"public static {name} select({name} a, {name} b, {maskType} test) => test ? b : a;"];
             var comps = string.Join(", ", Range(sig.Dimension).Select(i => $"test.{TypeShape.Components[i]} ? b.{TypeShape.Components[i]} : a.{TypeShape.Components[i]}"));
-            return [Attr, $"public static {name} select({name} a, {name} b, {test} test) => new({comps});"];
+            return [
+                Attr, $"public static {name} select({name} a, {name} b, {maskType} test) => new({comps});",
+                Attr, $"public static {name} select({name} a, {name} b, bool test) => test ? b : a;"
+            ];
         }),
 
         Fn("sincos", [BaseType.Float, BaseType.Double], (1, 4), sig =>
@@ -319,7 +327,7 @@ public static class MathFunctionCatalog
         {
             var name = sig.Shape.TypeName;
             var scalarCall = sig.Type == BaseType.Float
-                ? "(float)global::System.Math.Atan2"
+                ? "global::System.MathF.Atan2"
                 : "global::System.Math.Atan2";
             return [Attr, $"public static {name} atan2({name} y, {name} x) => new {name}({string.Join(", ", Range(sig.Dimension).Select(i => $"{scalarCall}(y.{TypeShape.Components[i]}, x.{TypeShape.Components[i]})"))});"];
         }),
@@ -421,7 +429,7 @@ public static class MathFunctionCatalog
             var typeName = sig.Shape.TypeName;
             if (sig.Dimension == 1)
             {
-                var cast = sig.Type == BaseType.Float ? $"(float)System.Math.{mathName}" : $"System.Math.{mathName}";
+                var cast = sig.Type == BaseType.Float ? $"System.MathF.{mathName}" : $"System.Math.{mathName}";
                 if (name == "pow")
                     return [Attr, $"public static {typeName} {name}({typeName} x, {typeName} y) => {cast}(x, y);"];
                 return [Attr, $"public static {typeName} {name}({typeName} x) => {cast}(x);"];
@@ -439,7 +447,7 @@ public static class MathFunctionCatalog
             var typeName = sig.Shape.TypeName;
             if (sig.Dimension == 1)
             {
-                var cast = sig.Type == BaseType.Float ? $"(float)System.Math.{simdMethod}" : $"System.Math.{simdMethod}";
+                var cast = sig.Type == BaseType.Float ? $"System.MathF.{simdMethod}" : $"System.Math.{simdMethod}";
                 return [Attr, $"public static {typeName} {name}({typeName} x) => {cast}(x);"];
             }
             if (sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
