@@ -2,13 +2,13 @@ namespace Sia.Math.CodeGenerators.Simd;
 
 public static class SimdStrategy
 {
-    public static bool IsSimdEligible(BaseType baseType) => baseType switch
+    private static bool IsSimdEligible(BaseType baseType) => baseType switch
     {
         BaseType.Float or BaseType.Int or BaseType.UInt or BaseType.Double => true,
         _ => false
     };
 
-    public static bool IsSimdEligibleVector(BaseType baseType, int rows, int columns)
+    private static bool IsSimdEligibleVector(BaseType baseType, int rows, int columns)
     {
         if (columns != 1) return false;
         if (rows < 2 || rows > 4) return false;
@@ -27,12 +27,7 @@ public static class SimdStrategy
         return rows == NativeLaneCount(baseType, rows);
     }
 
-    public static bool IsPaddedFit(BaseType baseType, int rows)
-    {
-        return rows == 3;
-    }
-
-    public static bool UsesVector256(BaseType baseType, int rows)
+    private static bool UsesVector256(BaseType baseType, int rows)
     {
         return baseType == BaseType.Double && rows > 2;
     }
@@ -50,7 +45,7 @@ public static class SimdStrategy
         return UsesVector256(baseType, rows) ? "Vector256" : "Vector128";
     }
 
-    public static ISimdStrategy For(BaseType baseType, int rows)
+    private static ISimdStrategy For(BaseType baseType, int rows)
     {
         if (!IsSimdEligibleVector(baseType, rows, 1))
             return ScalarStrategy.Instance;

@@ -14,7 +14,7 @@ namespace Sia.Math.CodeGenerators;
 public sealed class MathSourceGenerator : ISourceGenerator
 {
     private static readonly Func<TypeShape, CodeFragment> s_CorePipeline =
-        Pipeline.Compose(Fields.Generate, SimdInterop.Generate, Constants.Generate,
+        Pipeline.Compose(Fields.Generate, Constants.Generate,
             Constructors.Generate, Conversions.Generate, Operators.Generate,
             Equality.Generate, ToStringGen.Generate, DebugProxy.Generate);
 

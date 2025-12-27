@@ -86,7 +86,7 @@ public static class Operators
             body.AppendLine("#if DEBUG");
             body.AppendLine($"                if ((uint)index >= {count}) throw new System.ArgumentException(\"index must be between [0...{count - 1}]\");");
             body.AppendLine("#endif");
-            body.AppendLine($"                fixed ({returnType}* array = &x) {{ array[index] = value; }}");
+            body.AppendLine($"                fixed ({shape.TypeName}* self = &this) {{ (({returnType}*)self)[index] = value; }}");
             body.AppendLine("            }");
         }
         body.AppendLine("        }");
@@ -113,9 +113,9 @@ public static class Operators
         }
         else if (!isCompare && !shape.IsMatrix && Simd.SimdStrategy.SupportsSimdOp(op, shape.BaseType, shape.Rows))
         {
-            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {typeName} rhs) => new {resultName}(lhs.AsSimdUnsafe() {op} rhs.AsSimdUnsafe());");
-            body.AppendLine($"        public static {resultName} operator {op}({scalar} lhs, {typeName} rhs) => new {resultName}({Simd.SimdStrategy.CreateBroadcast(shape.BaseType, shape.Rows, "lhs")} {op} rhs.AsSimdUnsafe());");
-            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {scalar} rhs) => new {resultName}(lhs.AsSimdUnsafe() {op} {Simd.SimdStrategy.CreateBroadcast(shape.BaseType, shape.Rows, "rhs")});");
+            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {typeName} rhs) => new {resultName}(lhs.data {op} rhs.data);");
+            body.AppendLine($"        public static {resultName} operator {op}({scalar} lhs, {typeName} rhs) => new {resultName}({Simd.SimdStrategy.CreateBroadcast(shape.BaseType, shape.Rows, "lhs")} {op} rhs.data);");
+            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {scalar} rhs) => new {resultName}(lhs.data {op} {Simd.SimdStrategy.CreateBroadcast(shape.BaseType, shape.Rows, "rhs")});");
         }
         else
         {
@@ -133,7 +133,7 @@ public static class Operators
 
         if ((op is "-" or "~") && shape.IsSimdEligible && !shape.IsMatrix)
         {
-            body.AppendLine($"        public static {typeName} operator {op}({typeName} val) => new {typeName}({op}val.AsSimdUnsafe());");
+            body.AppendLine($"        public static {typeName} operator {op}({typeName} val) => new {typeName}({op}val.data);");
         }
         else if (op is "++" or "--")
         {
@@ -162,7 +162,7 @@ public static class Operators
 
         if (shape.IsSimdEligible && !shape.IsMatrix)
         {
-            body.AppendLine($"        public static {typeName} operator {op}({typeName} x, int n) => new {typeName}(x.AsSimdUnsafe() {op} n);");
+            body.AppendLine($"        public static {typeName} operator {op}({typeName} x, int n) => new {typeName}(x.data {op} n);");
         }
         else
         {

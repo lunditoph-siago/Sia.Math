@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace Sia.Math.CodeGenerators;
 
 public readonly record struct CodeFragment
@@ -38,9 +36,6 @@ public readonly record struct CodeFragment
         };
     }
 
-    public CodeFragment WithType(string body) => this with { TypeBody = body };
-    public CodeFragment WithMath(string body) => this with { MathBody = body };
-
     private static string? JoinBodies(string? a, string? b) => (a, b) switch
     {
         (null, null) => null,
@@ -48,7 +43,4 @@ public readonly record struct CodeFragment
         (_, null) => a,
         _ => a + "\n\n" + b
     };
-
-    public string[] GetUsings() => (Usings ?? []).Distinct().OrderBy(u => u).ToArray();
-    public string[] GetInherits() => (Inherits ?? []).Distinct().OrderBy(i => i).ToArray();
 }

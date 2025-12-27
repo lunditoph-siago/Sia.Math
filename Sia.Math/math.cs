@@ -560,8 +560,8 @@ public static partial class math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float3 cross(float3 x, float3 y)
     {
-        var xv = x.AsSimdUnsafe();
-        var yv = y.AsSimdUnsafe();
+        var xv = x.data;
+        var yv = y.data;
         var shuf = Vector128.Create(1, 2, 0, 3);
         var x1 = Vector128.Shuffle(xv, shuf);
         var y1 = Vector128.Shuffle(yv, shuf);
@@ -571,8 +571,8 @@ public static partial class math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double3 cross(double3 x, double3 y)
     {
-        var xv = x.AsSimdUnsafe();
-        var yv = y.AsSimdUnsafe();
+        var xv = x.data;
+        var yv = y.data;
         var shuf = Vector256.Create(1L, 2L, 0L, 3L);
         var x1 = Vector256.Shuffle(xv, shuf);
         var y1 = Vector256.Shuffle(yv, shuf);

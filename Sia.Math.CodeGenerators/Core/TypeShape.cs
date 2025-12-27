@@ -27,10 +27,8 @@ public readonly record struct TypeShape(BaseType BaseType, int Rows, int Columns
 {
     public bool IsScalar => Rows == 1 && Columns == 1;
     public bool IsVector => Columns == 1 && Rows > 1;
-    public bool IsRowVector => Rows == 1 && Columns > 1;
     public bool IsMatrix => Columns > 1;
     public bool IsSquareMatrix => Rows == Columns && IsMatrix;
-    public bool NeedsPadding => IsVector && Rows == 3 && BaseType is not BaseType.Bool;
     public bool IsSimdEligible => BaseType is not BaseType.Bool && IsVector && Rows >= 2 && Rows <= 4;
 
     public string BaseTypeName => BaseType.ToBaseTypeName();

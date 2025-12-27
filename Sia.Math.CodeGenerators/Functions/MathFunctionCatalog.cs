@@ -21,10 +21,23 @@ public static class MathFunctionCatalog
                     return [Attr, $"public static {name} min({name} x, {name} y) => isnan(y) ? x : (isnan(x) ? y : (x < y ? x : y));"];
                 return [Attr, $"public static {name} min({name} x, {name} y) => x < y ? x : y;"];
             }
-            if (sig.Type is BaseType.Int or BaseType.UInt && sig.Shape.IsSimdEligible)
+            if (sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} min({name} x, {name} y) => new {name}({vc}.Min(x.AsSimd(), y.AsSimd()));"];
+                if (sig.Type is BaseType.Int or BaseType.UInt)
+                    return [Attr, $"public static {name} min({name} x, {name} y) => new {name}({vc}.Min(x.data, y.data));"];
+                return [
+                    Attr,
+                    $"public static {name} min({name} x, {name} y)",
+                    "{",
+                    "    var xv = x.data;",
+                    "    var yv = y.data;",
+                    $"    var r = {vc}.ConditionalSelect({vc}.LessThan(xv, yv), xv, yv);",
+                    $"    r = {vc}.ConditionalSelect({vc}.IsNaN(xv), yv, r);",
+                    $"    r = {vc}.ConditionalSelect({vc}.IsNaN(yv), xv, r);",
+                    $"    return new {name}(r);",
+                    "}"
+                ];
             }
             return [Attr, $"public static {name} min({name} x, {name} y) => new({PerCompBin("min", sig.Dimension)});"];
         }),
@@ -38,10 +51,23 @@ public static class MathFunctionCatalog
                     return [Attr, $"public static {name} max({name} x, {name} y) => isnan(y) ? x : (isnan(x) ? y : (x > y ? x : y));"];
                 return [Attr, $"public static {name} max({name} x, {name} y) => x > y ? x : y;"];
             }
-            if (sig.Type is BaseType.Int or BaseType.UInt && sig.Shape.IsSimdEligible)
+            if (sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} max({name} x, {name} y) => new {name}({vc}.Max(x.AsSimd(), y.AsSimd()));"];
+                if (sig.Type is BaseType.Int or BaseType.UInt)
+                    return [Attr, $"public static {name} max({name} x, {name} y) => new {name}({vc}.Max(x.data, y.data));"];
+                return [
+                    Attr,
+                    $"public static {name} max({name} x, {name} y)",
+                    "{",
+                    "    var xv = x.data;",
+                    "    var yv = y.data;",
+                    $"    var r = {vc}.ConditionalSelect({vc}.GreaterThan(xv, yv), xv, yv);",
+                    $"    r = {vc}.ConditionalSelect({vc}.IsNaN(xv), yv, r);",
+                    $"    r = {vc}.ConditionalSelect({vc}.IsNaN(yv), xv, r);",
+                    $"    return new {name}(r);",
+                    "}"
+                ];
             }
             return [Attr, $"public static {name} max({name} x, {name} y) => new({PerCompBin("max", sig.Dimension)});"];
         }),
@@ -62,7 +88,7 @@ public static class MathFunctionCatalog
             if (sig.Type is BaseType.Int or BaseType.Float && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} abs({name} x) => new {name}({vc}.Abs(x.AsSimd()));"];
+                return [Attr, $"public static {name} abs({name} x) => new {name}({vc}.Abs(x.data));"];
             }
             return sig.Type switch
             {
@@ -89,7 +115,7 @@ public static class MathFunctionCatalog
             if (sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} sqrt({name} x) => new {name}({vc}.Sqrt(x.AsSimd()));"];
+                return [Attr, $"public static {name} sqrt({name} x) => new {name}({vc}.Sqrt(x.data));"];
             }
             return [Attr, $"public static {name} sqrt({name} x) => new({PerComp("sqrt", sig.Dimension)});"];
         }),
@@ -101,7 +127,7 @@ public static class MathFunctionCatalog
             {
                 var vt = Simd.SimdStrategy.NativeVectorTypeName(sig.Type, sig.Dimension);
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} rsqrt({name} x) => new {name}({vt}.One / {vc}.Sqrt(x.AsSimd()));"];
+                return [Attr, $"public static {name} rsqrt({name} x) => new {name}({vt}.One / {vc}.Sqrt(x.data));"];
             }
             return [Attr, $"public static {name} rsqrt({name} x) => 1.0f / sqrt(x);"];
         }),
@@ -119,15 +145,15 @@ public static class MathFunctionCatalog
             var scalar = sig.Type.ToBaseTypeName();
             if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
                 return [
-                    Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}(Vector128.Lerp(a.AsSimd(), b.AsSimd(), s.AsSimd()));",
-                    Attr, $"public static {name} lerp({name} a, {name} b, {scalar} s) => new {name}(Vector128.Lerp(a.AsSimd(), b.AsSimd(), Vector128.Create(s)));"
+                    Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}(Vector128.Lerp(a.data, b.data, s.data));",
+                    Attr, $"public static {name} lerp({name} a, {name} b, {scalar} s) => new {name}(Vector128.Lerp(a.data, b.data, Vector128.Create(s)));"
                 ];
             if (sig.Dimension >= 2 && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
                 return [
-                    Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}({vc}.FusedMultiplyAdd(s.AsSimd(), b.AsSimd() - a.AsSimd(), a.AsSimd()));",
-                    Attr, $"public static {name} lerp({name} a, {name} b, {scalar} s) => new {name}({vc}.FusedMultiplyAdd({vc}.Create(s), b.AsSimd() - a.AsSimd(), a.AsSimd()));"
+                    Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => new {name}({vc}.FusedMultiplyAdd(s.data, b.data - a.data, a.data));",
+                    Attr, $"public static {name} lerp({name} a, {name} b, {scalar} s) => new {name}({vc}.FusedMultiplyAdd({vc}.Create(s), b.data - a.data, a.data));"
                 ];
             }
             return [Attr, $"public static {name} lerp({name} a, {name} b, {name} s) => a + s * (b - a);"];
@@ -143,11 +169,11 @@ public static class MathFunctionCatalog
         {
             var name = sig.Shape.TypeName;
             if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => new {name}(Vector128.Clamp(v.AsSimd(), a.AsSimd(), b.AsSimd()));"];
+                return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => new {name}(Vector128.Clamp(v.data, a.data, b.data));"];
             if (sig.Dimension >= 2 && sig.Type is BaseType.Int or BaseType.UInt && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => new {name}({vc}.Max(a.AsSimd(), {vc}.Min(b.AsSimd(), v.AsSimd())));"];
+                return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => new {name}({vc}.Max(a.data, {vc}.Min(b.data, v.data)));"];
             }
             return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => max(a, min(b, v));"];
         }),
@@ -171,7 +197,7 @@ public static class MathFunctionCatalog
             if (sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {baseName} dot({name} x, {name} y) => {vc}.Dot(x.AsSimd(), y.AsSimd());"];
+                return [Attr, $"public static {baseName} dot({name} x, {name} y) => {vc}.Dot(x.data, y.data);"];
             }
             return [Attr, $"public static {baseName} dot({name} x, {name} y) => {string.Join(" + ", Range(sig.Dimension).Select(i => $"x.{TypeShape.Components[i]} * y.{TypeShape.Components[i]}"))};"];
         }),
@@ -197,6 +223,11 @@ public static class MathFunctionCatalog
         Fn("normalize", [BaseType.Float, BaseType.Double], (2, 4), sig =>
         {
             var name = sig.Shape.TypeName;
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} normalize({name} x) => new {name}(x.data / {vc}.Sqrt({vc}.Create(dot(x, x))));"];
+            }
             return [Attr, $"public static {name} normalize({name} x) => rsqrt(dot(x, x)) * x;"];
         }),
 
@@ -221,7 +252,7 @@ public static class MathFunctionCatalog
             {
                 var zero = sig.Type.ToTypedLiteral(0);
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static bool any({name} x) => !{vc}.All(x.AsSimd(), {zero});"];
+                return [Attr, $"public static bool any({name} x) => !{vc}.All(x.data, {zero});"];
             }
             var cond = string.Join(" || ", Range(sig.Dimension).Select(i =>
                 sig.Type == BaseType.Bool ? $"x.{TypeShape.Components[i]}" :
@@ -236,7 +267,7 @@ public static class MathFunctionCatalog
             {
                 var zero = sig.Type.ToTypedLiteral(0);
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static bool all({name} x) => {vc}.None(x.AsSimd(), {zero});"];
+                return [Attr, $"public static bool all({name} x) => {vc}.None(x.data, {zero});"];
             }
             var cond = string.Join(" && ", Range(sig.Dimension).Select(i =>
                 sig.Type == BaseType.Bool ? $"x.{TypeShape.Components[i]}" :
@@ -266,7 +297,7 @@ public static class MathFunctionCatalog
                     Attr,
                     $"public static void sincos({name} v, out {name} s, out {name} c)",
                     "{",
-                    "    var (sin, cos) = Vector128.SinCos(v.AsSimd());",
+                    "    var (sin, cos) = Vector128.SinCos(v.data);",
                     $"    s = new {name}(sin);",
                     $"    c = new {name}(cos);",
                     "}"
@@ -279,7 +310,7 @@ public static class MathFunctionCatalog
         {
             var name = sig.Shape.TypeName;
             if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} radians({name} x) => new(Vector128.DegreesToRadians(x.AsSimd()));"];
+                return [Attr, $"public static {name} radians({name} x) => new(Vector128.DegreesToRadians(x.data));"];
             var constant = sig.Type == BaseType.Double ? "TORADIANS_DBL" : "TORADIANS";
             return [Attr, $"public static {name} radians({name} x) => x * {constant};"];
         }),
@@ -288,7 +319,7 @@ public static class MathFunctionCatalog
         {
             var name = sig.Shape.TypeName;
             if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} degrees({name} x) => new(Vector128.RadiansToDegrees(x.AsSimd()));"];
+                return [Attr, $"public static {name} degrees({name} x) => new(Vector128.RadiansToDegrees(x.data));"];
             var constant = sig.Type == BaseType.Double ? "TODEGREES_DBL" : "TODEGREES";
             return [Attr, $"public static {name} degrees({name} x) => x * {constant};"];
         }),
@@ -299,7 +330,7 @@ public static class MathFunctionCatalog
             if (sig.Shape.IsSimdEligible && Simd.SimdStrategy.IsExactFit(sig.Type, sig.Dimension))
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {sig.Type.ToBaseTypeName()} csum({name} x) => {vc}.Sum(x.AsSimd());"];
+                return [Attr, $"public static {sig.Type.ToBaseTypeName()} csum({name} x) => {vc}.Sum(x.data);"];
             }
             return [Attr, $"public static {sig.Type.ToBaseTypeName()} csum({name} x) => {string.Join(" + ", Range(sig.Dimension).Select(i => $"x.{TypeShape.Components[i]}"))};"];
         }),
@@ -308,7 +339,7 @@ public static class MathFunctionCatalog
         {
             var name = sig.Shape.TypeName;
             if (sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} round({name} x) => new {name}(Vector128.Round(x.AsSimd()));"];
+                return [Attr, $"public static {name} round({name} x) => new {name}(Vector128.Round(x.data));"];
             return [Attr, $"public static {name} round({name} x) => new {name}({PerComp("round", sig.Dimension)});"];
         }),
 
@@ -318,7 +349,7 @@ public static class MathFunctionCatalog
             if (sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} trunc({name} x) => new {name}({vc}.Truncate(x.AsSimd()));"];
+                return [Attr, $"public static {name} trunc({name} x) => new {name}({vc}.Truncate(x.data));"];
             }
             return [Attr, $"public static {name} trunc({name} x) => new {name}({PerComp("trunc", sig.Dimension)});"];
         }),
@@ -356,7 +387,7 @@ public static class MathFunctionCatalog
             if (sig.Dimension >= 2 && sig.Type is BaseType.Float or BaseType.Double && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static {name} mad({name} a, {name} b, {name} c) => new {name}({vc}.FusedMultiplyAdd(a.AsSimd(), b.AsSimd(), c.AsSimd()));"];
+                return [Attr, $"public static {name} mad({name} a, {name} b, {name} c) => new {name}({vc}.FusedMultiplyAdd(a.data, b.data, c.data));"];
             }
             return [Attr, $"public static {name} mad({name} a, {name} b, {name} c) => a * b + c;"];
         }),
@@ -451,7 +482,7 @@ public static class MathFunctionCatalog
                 return [Attr, $"public static {typeName} {name}({typeName} x) => {cast}(x);"];
             }
             if (sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {typeName} {name}({typeName} x) => new {typeName}(Vector128.{simdMethod}(x.AsSimd()));"];
+                return [Attr, $"public static {typeName} {name}({typeName} x) => new {typeName}(Vector128.{simdMethod}(x.data));"];
             return [Attr, $"public static {typeName} {name}({typeName} x) => new({PerComp(name, sig.Dimension)});"];
         });
     }

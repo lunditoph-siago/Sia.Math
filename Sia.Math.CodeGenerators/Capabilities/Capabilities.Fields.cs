@@ -8,28 +8,52 @@ public static class Fields
     {
         if (shape.IsMatrix)
             return GenerateMatrix(shape);
-        return GenerateVector(shape);
+        return shape.BaseType == BaseType.Bool
+            ? GenerateBoolVector(shape)
+            : GenerateSimdVector(shape);
     }
 
-    private static CodeFragment GenerateVector(TypeShape shape)
+    private static CodeFragment GenerateBoolVector(TypeShape shape)
     {
-        var useMarshal = shape.BaseType == BaseType.Bool;
-        var imports = useMarshal ? new[] { "System.Runtime.InteropServices" } : System.Array.Empty<string>();
-
         var body = new System.Text.StringBuilder();
         foreach (var i in Enumerable.Range(0, shape.Rows))
         {
-            if (useMarshal)
-                body.AppendLine($"        [MarshalAs(UnmanagedType.U1)]");
+            body.AppendLine($"        [MarshalAs(UnmanagedType.U1)]");
             body.AppendLine($"        public {shape.BaseTypeName} {TypeShape.VectorFields[i]};");
         }
 
-        if (shape.NeedsPadding)
-            body.AppendLine($"        internal {shape.BaseTypeName} __pad;");
+        return new CodeFragment
+        {
+            Usings = ["System.Runtime.InteropServices"],
+            TypeBody = body.ToString().TrimEnd()
+        };
+    }
+
+    private static CodeFragment GenerateSimdVector(TypeShape shape)
+    {
+        var vectorTypeName = Simd.SimdStrategy.NativeVectorTypeName(shape.BaseType, shape.Rows);
+        var body = new System.Text.StringBuilder();
+        body.AppendLine($"        public {vectorTypeName} data;");
+
+        foreach (var i in Enumerable.Range(0, shape.Rows))
+        {
+            body.AppendLine();
+            body.AppendLine($"        public {shape.BaseTypeName} {TypeShape.VectorFields[i]}");
+            body.AppendLine("        {");
+            body.AppendLine("            [MethodImpl(MethodImplOptions.AggressiveInlining)]");
+            body.AppendLine($"            readonly get => data.GetElement({i});");
+            body.AppendLine("            [MethodImpl(MethodImplOptions.AggressiveInlining)]");
+            body.AppendLine($"            set => data = data.WithElement({i}, value);");
+            body.AppendLine("        }");
+        }
+
+        body.AppendLine();
+        body.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
+        body.AppendLine($"        public {shape.TypeName}({vectorTypeName} v) => data = v;");
 
         return new CodeFragment
         {
-            Usings = imports,
+            Usings = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"],
             TypeBody = body.ToString().TrimEnd()
         };
     }

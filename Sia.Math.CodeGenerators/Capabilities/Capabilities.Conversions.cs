@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 
 namespace Sia.Math.CodeGenerators.Capabilities;
@@ -69,22 +70,40 @@ public static class Conversions
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         typeBody.AppendLine($"        public {shape.TypeName}({srcName} v)");
         typeBody.AppendLine("        {");
+        var args = new List<string>();
         for (var i = 0; i < fieldCount; i++)
         {
             var rhs = isScalar ? "v" : $"v.{fields[i]}";
-            if (isExplicit)
+            if (srcType != shape.BaseType)
             {
                 if (srcType == BaseType.Bool)
+                {
                     rhs = shape.IsMatrix
                         ? $"math.select(new {fieldType}({shape.BaseType.ToTypedLiteral(0)}), new {fieldType}({shape.BaseType.ToTypedLiteral(1)}), {rhs})"
                         : $"{rhs} ? {shape.BaseType.ToTypedLiteral(1)} : {shape.BaseType.ToTypedLiteral(0)}";
-                else
+                }
+                else if (!shape.IsMatrix || isExplicit)
+                {
                     rhs = $"({fieldType}){rhs}";
+                }
             }
-            typeBody.AppendLine($"            this.{fields[i]} = {rhs};");
+            args.Add(rhs);
         }
-        if (shape.NeedsPadding)
-            typeBody.AppendLine("            this.__pad = 0;");
+
+        if (shape.IsMatrix || shape.BaseType == BaseType.Bool)
+        {
+            for (var i = 0; i < fieldCount; i++)
+                typeBody.AppendLine($"            this.{fields[i]} = {args[i]};");
+        }
+        else
+        {
+            var laneCount = Simd.SimdStrategy.NativeLaneCount(shape.BaseType, shape.Rows);
+            var zero = shape.BaseType.ToTypedLiteral(0);
+            for (var i = fieldCount; i < laneCount; i++)
+                args.Add(zero);
+            var vectorClassName = Simd.SimdStrategy.NativeVectorClassName(shape.BaseType, shape.Rows);
+            typeBody.AppendLine($"            data = {vectorClassName}.Create({string.Join(", ", args)});");
+        }
         typeBody.AppendLine("        }");
 
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
