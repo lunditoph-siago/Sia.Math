@@ -634,26 +634,28 @@ public class Float3Unlerp : BenchBase
 
 public class Float3Remap : BenchBase
 {
-    private float3 _sa, _sb, _sc, _sd;
-    private Vector3 _va, _vb, _vc, _vd;
+    private float3 _sa, _sb, _sc, _sd, _se;
+    private Vector3 _va, _vb, _vc, _vd, _ve;
 
     protected override void OnSetup()
     {
         _sa = new(NextF(), NextF(), NextF());
-        _sb = new(NextF(), NextF(), NextF());
+        _sb = new(NextF() + 2, NextF() + 2, NextF() + 2);
         _sc = new(NextF(), NextF(), NextF());
-        _sd = new(NextF(), NextF(), NextF());
+        _sd = new(NextF() + 2, NextF() + 2, NextF() + 2);
+        _se = new(NextF(), NextF(), NextF());
         _va = new(_sa.x, _sa.y, _sa.z);
         _vb = new(_sb.x, _sb.y, _sb.z);
         _vc = new(_sc.x, _sc.y, _sc.z);
         _vd = new(_sd.x, _sd.y, _sd.z);
+        _ve = new(_se.x, _se.y, _se.z);
     }
 
     [Benchmark(Baseline = true), BenchmarkCategory("Remap")]
-    public void Sys_Remap() { var t = (_va - _va) / (_vb - _va); var r = Vector3.Lerp(_vc, _vd, t); Sink(r.X); }
+    public void Sys_Remap() { var t = (_ve - _va) / (_vb - _va); var r = Vector3.Lerp(_vc, _vd, t); Sink(r.X); }
 
     [Benchmark, BenchmarkCategory("Remap")]
-    public void Sia_Remap() { var r = math.remap(_sa, _sb, _sc, _sd, _sa); Sink(r.x); }
+    public void Sia_Remap() { var r = math.remap(_sa, _sb, _sc, _sd, _se); Sink(r.x); }
 }
 
 #endregion
