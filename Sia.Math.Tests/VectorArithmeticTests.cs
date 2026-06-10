@@ -1,28 +1,20 @@
 using Sia.Math;
+using static Sia.Math.Tests.TestValue;
+using static Sia.Math.Tests.TestAssert;
 
 namespace Sia.Math.Tests;
 
 public class FloatVectorArithmeticTests
 {
-    private static readonly Random Rng = new(12345);
-
-    private static float NextFloat() => (float)(Rng.NextDouble() * 200.0 - 100.0);
-
-    // Hardware dot-product sums lanes in a different order than left-to-right scalar addition
-    // (pairwise/horizontal-add), so it can legitimately differ from the naive reference in the
-    // low bits of a float's ~7 significant digits. Use a relative tolerance instead of fixed
-    // decimal places, which assume a magnitude the reduction doesn't have here.
-    private static void AssertApprox(float expected, float actual, float relTol = 1e-4f) =>
-        Assert.True(System.Math.Abs(expected - actual) <= relTol * System.Math.Max(1f, System.Math.Abs(expected)),
-            $"expected {expected}, got {actual}");
+    private static readonly TestRng Rng = new(12345);
 
     [Fact]
     public void Float2_Arithmetic_MatchesScalarReference()
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextFloat(); var ay = NextFloat();
-            var bx = NextFloat(); var by = NextFloat();
+            var ax = Rng.Float(); var ay = Rng.Float();
+            var bx = Rng.Float(); var by = Rng.Float();
             var a = new float2(ax, ay);
             var b = new float2(bx, by);
 
@@ -34,7 +26,7 @@ public class FloatVectorArithmeticTests
             Assert.Equal(ay * by, (a * b).y, 3);
             Assert.Equal(ax / bx, (a / b).x, 3);
             Assert.Equal(ay / by, (a / b).y, 3);
-            AssertApprox(ax * bx + ay * by, math.dot(a, b));
+            Approx(ax * bx + ay * by, math.dot(a, b));
         }
     }
 
@@ -43,8 +35,8 @@ public class FloatVectorArithmeticTests
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextFloat(); var ay = NextFloat(); var az = NextFloat();
-            var bx = NextFloat(); var by = NextFloat(); var bz = NextFloat();
+            var ax = Rng.Float(); var ay = Rng.Float(); var az = Rng.Float();
+            var bx = Rng.Float(); var by = Rng.Float(); var bz = Rng.Float();
             var a = new float3(ax, ay, az);
             var b = new float3(bx, by, bz);
 
@@ -60,7 +52,7 @@ public class FloatVectorArithmeticTests
             Assert.Equal(ax / bx, (a / b).x, 3);
             Assert.Equal(ay / by, (a / b).y, 3);
             Assert.Equal(az / bz, (a / b).z, 3);
-            AssertApprox(ax * bx + ay * by + az * bz, math.dot(a, b));
+            Approx(ax * bx + ay * by + az * bz, math.dot(a, b));
 
             var cross = math.cross(a, b);
             Assert.Equal(ay * bz - az * by, cross.x, 3);
@@ -74,8 +66,8 @@ public class FloatVectorArithmeticTests
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextFloat(); var ay = NextFloat(); var az = NextFloat(); var aw = NextFloat();
-            var bx = NextFloat(); var by = NextFloat(); var bz = NextFloat(); var bw = NextFloat();
+            var ax = Rng.Float(); var ay = Rng.Float(); var az = Rng.Float(); var aw = Rng.Float();
+            var bx = Rng.Float(); var by = Rng.Float(); var bz = Rng.Float(); var bw = Rng.Float();
             var a = new float4(ax, ay, az, aw);
             var b = new float4(bx, by, bz, bw);
 
@@ -95,7 +87,7 @@ public class FloatVectorArithmeticTests
             Assert.Equal(ay / by, (a / b).y, 3);
             Assert.Equal(az / bz, (a / b).z, 3);
             Assert.Equal(aw / bw, (a / b).w, 3);
-            AssertApprox(ax * bx + ay * by + az * bz + aw * bw, math.dot(a, b));
+            Approx(ax * bx + ay * by + az * bz + aw * bw, math.dot(a, b));
         }
     }
 
@@ -104,28 +96,108 @@ public class FloatVectorArithmeticTests
     {
         for (var i = 0; i < 64; i++)
         {
-            var v = new float3(NextFloat() + 50f, NextFloat() + 50f, NextFloat() + 50f);
+            var v = new float3(Rng.Float(50f, 150f), Rng.Float(50f, 150f), Rng.Float(50f, 150f));
             var n = math.normalize(v);
-            AssertApprox(1f, math.length(n));
-            AssertApprox(math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z), math.length(v));
-            AssertApprox(v.x * v.x + v.y * v.y + v.z * v.z, math.lengthsq(v));
+            Approx(1f, math.length(n));
+            Approx(math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z), math.length(v));
+            Approx(v.x * v.x + v.y * v.y + v.z * v.z, math.lengthsq(v));
+        }
+    }
+}
+
+public class DoubleVectorArithmeticTests
+{
+    private static readonly TestRng Rng = new(161803);
+
+    [Fact]
+    public void Double2_Arithmetic_MatchesScalarReference()
+    {
+        for (var i = 0; i < 256; i++)
+        {
+            var ax = Rng.Double(); var ay = Rng.Double();
+            var bx = Rng.Double(); var by = Rng.Double();
+            var a = new double2(ax, ay);
+            var b = new double2(bx, by);
+
+            Approx(ax + bx, (a + b).x);
+            Approx(ay + by, (a + b).y);
+            Approx(ax - bx, (a - b).x);
+            Approx(ax * bx, (a * b).x);
+            Approx(ax / bx, (a / b).x);
+            Approx(ax * bx + ay * by, math.dot(a, b));
+            Approx(-ax, (-a).x);
+        }
+    }
+
+    [Fact]
+    public void Double3_Arithmetic_MatchesScalarReference()
+    {
+        for (var i = 0; i < 256; i++)
+        {
+            var ax = Rng.Double(); var ay = Rng.Double(); var az = Rng.Double();
+            var bx = Rng.Double(); var by = Rng.Double(); var bz = Rng.Double();
+            var a = new double3(ax, ay, az);
+            var b = new double3(bx, by, bz);
+
+            Approx(ax + bx, (a + b).x);
+            Approx(ay + by, (a + b).y);
+            Approx(az + bz, (a + b).z);
+            Approx(ax - bx, (a - b).x);
+            Approx(ax * bx, (a * b).x);
+            Approx(ax / bx, (a / b).x);
+            Approx(ax * bx + ay * by + az * bz, math.dot(a, b));
+            Approx(-az, (-a).z);
+
+            var cross = math.cross(a, b);
+            Approx(ay * bz - az * by, cross.x);
+            Approx(az * bx - ax * bz, cross.y);
+            Approx(ax * by - ay * bx, cross.z);
+        }
+    }
+
+    [Fact]
+    public void Double4_Arithmetic_MatchesScalarReference()
+    {
+        for (var i = 0; i < 256; i++)
+        {
+            var ax = Rng.Double(); var ay = Rng.Double(); var az = Rng.Double(); var aw = Rng.Double();
+            var bx = Rng.Double(); var by = Rng.Double(); var bz = Rng.Double(); var bw = Rng.Double();
+            var a = new double4(ax, ay, az, aw);
+            var b = new double4(bx, by, bz, bw);
+
+            Approx(ax + bx, (a + b).x);
+            Approx(aw + bw, (a + b).w);
+            Approx(ax - bx, (a - b).x);
+            Approx(ax * bx, (a * b).x);
+            Approx(ax / bx, (a / b).x);
+            Approx(ax * bx + ay * by + az * bz + aw * bw, math.dot(a, b));
+            Approx(-aw, (-a).w);
+        }
+    }
+
+    [Fact]
+    public void Double3_Normalize_ProducesUnitLength()
+    {
+        for (var i = 0; i < 64; i++)
+        {
+            var v = new double3(Rng.Double(50, 150), Rng.Double(50, 150), Rng.Double(50, 150));
+            var n = math.normalize(v);
+            Approx(1.0, math.length(n), 1e-6);
         }
     }
 }
 
 public class IntVectorArithmeticTests
 {
-    private static readonly Random Rng = new(54321);
-
-    private static int NextInt() => Rng.Next(-1000, 1000);
+    private static readonly TestRng Rng = new(54321);
 
     [Fact]
     public void Int2_Arithmetic_MatchesScalarReference()
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextInt(); var ay = NextInt();
-            var bx = NextInt(); var by = NextInt();
+            var ax = Rng.Int(); var ay = Rng.Int();
+            var bx = Rng.Int(); var by = Rng.Int();
             var a = new int2(ax, ay);
             var b = new int2(bx, by);
 
@@ -144,8 +216,8 @@ public class IntVectorArithmeticTests
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextInt(); var ay = NextInt(); var az = NextInt();
-            var bx = NextInt(); var by = NextInt(); var bz = NextInt();
+            var ax = Rng.Int(); var ay = Rng.Int(); var az = Rng.Int();
+            var bx = Rng.Int(); var by = Rng.Int(); var bz = Rng.Int();
             var a = new int3(ax, ay, az);
             var b = new int3(bx, by, bz);
 
@@ -167,8 +239,8 @@ public class IntVectorArithmeticTests
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextInt(); var ay = NextInt(); var az = NextInt(); var aw = NextInt();
-            var bx = NextInt(); var by = NextInt(); var bz = NextInt(); var bw = NextInt();
+            var ax = Rng.Int(); var ay = Rng.Int(); var az = Rng.Int(); var aw = Rng.Int();
+            var bx = Rng.Int(); var by = Rng.Int(); var bz = Rng.Int(); var bw = Rng.Int();
             var a = new int4(ax, ay, az, aw);
             var b = new int4(bx, by, bz, bw);
 
@@ -189,108 +261,17 @@ public class IntVectorArithmeticTests
     }
 }
 
-public class UnaryAndBitwiseVectorTests
-{
-    private static readonly Random Rng = new(24680);
-
-    private static int NextInt() => Rng.Next(-1000, 1000);
-    private static uint NextUInt() => (uint)Rng.Next(0, int.MaxValue);
-    private static float NextFloat() => (float)(Rng.NextDouble() * 200.0 - 100.0);
-
-    [Fact]
-    public void Float_UnaryNegation_MatchesScalarReference()
-    {
-        for (var i = 0; i < 64; i++)
-        {
-            var x = NextFloat(); var y = NextFloat(); var z = NextFloat(); var w = NextFloat();
-            Assert.Equal(-x, (-new float2(x, y)).x, 3);
-            Assert.Equal(-y, (-new float2(x, y)).y, 3);
-            Assert.Equal(-x, (-new float3(x, y, z)).x, 3);
-            Assert.Equal(-z, (-new float3(x, y, z)).z, 3);
-            Assert.Equal(-w, (-new float4(x, y, z, w)).w, 3);
-        }
-    }
-
-    [Fact]
-    public void Int_UnaryNegation_MatchesScalarReference()
-    {
-        for (var i = 0; i < 64; i++)
-        {
-            var x = NextInt(); var y = NextInt(); var z = NextInt();
-            var v = -new int3(x, y, z);
-            Assert.Equal(-x, v.x);
-            Assert.Equal(-y, v.y);
-            Assert.Equal(-z, v.z);
-        }
-    }
-
-    [Fact]
-    public void UInt_UnaryNegation_MatchesScalarWraparoundReference()
-    {
-        for (var i = 0; i < 64; i++)
-        {
-            var x = NextUInt(); var y = NextUInt(); var z = NextUInt();
-            var v = -new uint3(x, y, z);
-            Assert.Equal((uint)-x, v.x);
-            Assert.Equal((uint)-y, v.y);
-            Assert.Equal((uint)-z, v.z);
-        }
-    }
-
-    [Fact]
-    public void Int_BitwiseAndShift_MatchesScalarReference()
-    {
-        for (var i = 0; i < 64; i++)
-        {
-            var ax = NextInt(); var ay = NextInt(); var az = NextInt();
-            var bx = NextInt(); var by = NextInt(); var bz = NextInt();
-            var a = new int3(ax, ay, az);
-            var b = new int3(bx, by, bz);
-            var n = Rng.Next(0, 8);
-
-            Assert.Equal(ax & bx, (a & b).x);
-            Assert.Equal(ay | by, (a | b).y);
-            Assert.Equal(az ^ bz, (a ^ b).z);
-            Assert.Equal(~ax, (~a).x);
-            Assert.Equal(ax << n, (a << n).x);
-            Assert.Equal(ax >> n, (a >> n).x);
-        }
-    }
-
-    [Fact]
-    public void UInt_BitwiseAndShift_MatchesScalarReference()
-    {
-        for (var i = 0; i < 64; i++)
-        {
-            var ax = NextUInt(); var ay = NextUInt(); var az = NextUInt();
-            var bx = NextUInt(); var by = NextUInt(); var bz = NextUInt();
-            var a = new uint3(ax, ay, az);
-            var b = new uint3(bx, by, bz);
-            var n = Rng.Next(0, 8);
-
-            Assert.Equal(ax & bx, (a & b).x);
-            Assert.Equal(ay | by, (a | b).y);
-            Assert.Equal(az ^ bz, (a ^ b).z);
-            Assert.Equal(~ax, (~a).x);
-            Assert.Equal(ax << n, (a << n).x);
-            Assert.Equal(ax >> n, (a >> n).x);
-        }
-    }
-}
-
 public class UIntVectorArithmeticTests
 {
-    private static readonly Random Rng = new(98765);
-
-    private static uint NextUInt() => (uint)Rng.Next(0, 1000);
+    private static readonly TestRng Rng = new(98765);
 
     [Fact]
     public void UInt2_Arithmetic_MatchesScalarReference()
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextUInt(); var ay = NextUInt();
-            var bx = NextUInt(); var by = NextUInt();
+            var ax = Rng.UInt(); var ay = Rng.UInt();
+            var bx = Rng.UInt(); var by = Rng.UInt();
             var a = new uint2(ax, ay);
             var b = new uint2(bx, by);
 
@@ -307,8 +288,8 @@ public class UIntVectorArithmeticTests
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextUInt(); var ay = NextUInt(); var az = NextUInt();
-            var bx = NextUInt(); var by = NextUInt(); var bz = NextUInt();
+            var ax = Rng.UInt(); var ay = Rng.UInt(); var az = Rng.UInt();
+            var bx = Rng.UInt(); var by = Rng.UInt(); var bz = Rng.UInt();
             var a = new uint3(ax, ay, az);
             var b = new uint3(bx, by, bz);
 
@@ -327,8 +308,8 @@ public class UIntVectorArithmeticTests
     {
         for (var i = 0; i < 256; i++)
         {
-            var ax = NextUInt(); var ay = NextUInt(); var az = NextUInt(); var aw = NextUInt();
-            var bx = NextUInt(); var by = NextUInt(); var bz = NextUInt(); var bw = NextUInt();
+            var ax = Rng.UInt(); var ay = Rng.UInt(); var az = Rng.UInt(); var aw = Rng.UInt();
+            var bx = Rng.UInt(); var by = Rng.UInt(); var bz = Rng.UInt(); var bw = Rng.UInt();
             var a = new uint4(ax, ay, az, aw);
             var b = new uint4(bx, by, bz, bw);
 
@@ -341,6 +322,91 @@ public class UIntVectorArithmeticTests
             Assert.Equal(az * bz, (a * b).z);
             Assert.Equal(aw * bw, (a * b).w);
             Assert.Equal(ax * bx + ay * by + az * bz + aw * bw, math.dot(a, b));
+        }
+    }
+}
+
+public class UnaryAndBitwiseVectorTests
+{
+    private static readonly TestRng Rng = new(24680);
+
+    [Fact]
+    public void Float_UnaryNegation_MatchesScalarReference()
+    {
+        for (var i = 0; i < 64; i++)
+        {
+            var x = Rng.Float(); var y = Rng.Float(); var z = Rng.Float(); var w = Rng.Float();
+            Assert.Equal(-x, (-new float2(x, y)).x, 3);
+            Assert.Equal(-y, (-new float2(x, y)).y, 3);
+            Assert.Equal(-x, (-new float3(x, y, z)).x, 3);
+            Assert.Equal(-z, (-new float3(x, y, z)).z, 3);
+            Assert.Equal(-w, (-new float4(x, y, z, w)).w, 3);
+        }
+    }
+
+    [Fact]
+    public void Int_UnaryNegation_MatchesScalarReference()
+    {
+        for (var i = 0; i < 64; i++)
+        {
+            var x = Rng.Int(); var y = Rng.Int(); var z = Rng.Int();
+            var v = -new int3(x, y, z);
+            Assert.Equal(-x, v.x);
+            Assert.Equal(-y, v.y);
+            Assert.Equal(-z, v.z);
+        }
+    }
+
+    [Fact]
+    public void UInt_UnaryNegation_MatchesScalarWraparoundReference()
+    {
+        for (var i = 0; i < 64; i++)
+        {
+            var x = Rng.UInt(int.MaxValue); var y = Rng.UInt(int.MaxValue); var z = Rng.UInt(int.MaxValue);
+            var v = -new uint3(x, y, z);
+            Assert.Equal((uint)-x, v.x);
+            Assert.Equal((uint)-y, v.y);
+            Assert.Equal((uint)-z, v.z);
+        }
+    }
+
+    [Fact]
+    public void Int_BitwiseAndShift_MatchesScalarReference()
+    {
+        for (var i = 0; i < 64; i++)
+        {
+            var ax = Rng.Int(); var ay = Rng.Int(); var az = Rng.Int();
+            var bx = Rng.Int(); var by = Rng.Int(); var bz = Rng.Int();
+            var a = new int3(ax, ay, az);
+            var b = new int3(bx, by, bz);
+            var n = Rng.Int(0, 8);
+
+            Assert.Equal(ax & bx, (a & b).x);
+            Assert.Equal(ay | by, (a | b).y);
+            Assert.Equal(az ^ bz, (a ^ b).z);
+            Assert.Equal(~ax, (~a).x);
+            Assert.Equal(ax << n, (a << n).x);
+            Assert.Equal(ax >> n, (a >> n).x);
+        }
+    }
+
+    [Fact]
+    public void UInt_BitwiseAndShift_MatchesScalarReference()
+    {
+        for (var i = 0; i < 64; i++)
+        {
+            var ax = Rng.UInt(int.MaxValue); var ay = Rng.UInt(int.MaxValue); var az = Rng.UInt(int.MaxValue);
+            var bx = Rng.UInt(int.MaxValue); var by = Rng.UInt(int.MaxValue); var bz = Rng.UInt(int.MaxValue);
+            var a = new uint3(ax, ay, az);
+            var b = new uint3(bx, by, bz);
+            var n = Rng.Int(0, 8);
+
+            Assert.Equal(ax & bx, (a & b).x);
+            Assert.Equal(ay | by, (a | b).y);
+            Assert.Equal(az ^ bz, (a ^ b).z);
+            Assert.Equal(~ax, (~a).x);
+            Assert.Equal(ax << n, (a << n).x);
+            Assert.Equal(ax >> n, (a >> n).x);
         }
     }
 }

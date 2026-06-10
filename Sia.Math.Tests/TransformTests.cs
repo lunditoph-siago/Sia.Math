@@ -1,24 +1,18 @@
 using Sia.Math;
+using static Sia.Math.Tests.TestAssert;
 
 namespace Sia.Math.Tests;
 
 public class TransformTests
 {
-    private static readonly Random Rng = new(31415926);
+    private static readonly TestRng Rng = new(31415926);
 
-    private static float NextFloat() => (float)(Rng.NextDouble() * 10.0 - 5.0);
-
-    private static float3 RandomPoint() => new(NextFloat(), NextFloat(), NextFloat());
+    private static float3 RandomPoint() => new(Rng.Float(-5f, 5f), Rng.Float(-5f, 5f), Rng.Float(-5f, 5f));
 
     private static quaternion RandomUnitQuaternion()
     {
-        var q = new quaternion(NextFloat(), NextFloat(), NextFloat(), NextFloat());
+        var q = new quaternion(Rng.Float(-5f, 5f), Rng.Float(-5f, 5f), Rng.Float(-5f, 5f), Rng.Float(-5f, 5f));
         return math.normalize(q);
-    }
-
-    private static void AssertApprox(float3 expected, float3 actual, float tol = 1e-2f)
-    {
-        Assert.True(math.length(expected - actual) < tol, $"expected {expected}, got {actual}");
     }
 
     [Fact]
@@ -33,12 +27,11 @@ public class TransformTests
             float4x4 m = affine;
             var p = RandomPoint();
 
-            // row-vector convention: transform a homogeneous point via v*M
             var homogeneous = new float4(p, 1f);
             var transformed = math.mul(homogeneous, m);
 
             var expected = math.rotate(q, p) + translation;
-            AssertApprox(expected, transformed.xyz);
+            Approx(expected, transformed.xyz);
             Assert.True(System.Math.Abs(transformed.w - 1f) < 1e-3f);
         }
     }
@@ -50,7 +43,7 @@ public class TransformTests
         {
             var q = RandomUnitQuaternion();
             var translation = RandomPoint();
-            var scale = new float3(1f + (float)Rng.NextDouble(), 1f + (float)Rng.NextDouble(), 1f + (float)Rng.NextDouble());
+            var scale = new float3(1f + Rng.Float01(), 1f + Rng.Float01(), 1f + Rng.Float01());
             var affine = new AffineTransform(translation, q, scale);
 
             float4x4 m = affine;
@@ -60,7 +53,7 @@ public class TransformTests
             var transformed = math.mul(homogeneous, m);
 
             var expected = math.rotate(q, p * scale) + translation;
-            AssertApprox(expected, transformed.xyz);
+            Approx(expected, transformed.xyz);
         }
     }
 
@@ -78,9 +71,7 @@ public class TransformTests
             var reconstructed = new RigidTransform(m);
 
             var p = RandomPoint();
-            var expected = math.transform(original, p);
-            var actual = math.transform(reconstructed, p);
-            AssertApprox(expected, actual);
+            Approx(math.transform(original, p), math.transform(reconstructed, p));
         }
     }
 
@@ -94,9 +85,7 @@ public class TransformTests
             var t = new MatrixTransform(translation, q);
             var p = RandomPoint();
 
-            var actual = math.mul(t, p);
-            var expected = math.rotate(q, p) + translation;
-            AssertApprox(expected, actual);
+            Approx(math.rotate(q, p) + translation, math.mul(t, p));
         }
     }
 
@@ -112,8 +101,7 @@ public class TransformTests
             var p = RandomPoint();
 
             var transformed = math.mul(t, p);
-            var back = math.mul(inv, transformed);
-            AssertApprox(p, back);
+            Approx(p, math.mul(inv, transformed));
         }
     }
 
@@ -129,10 +117,7 @@ public class TransformTests
             var p = RandomPoint();
 
             var composed = math.mul(tA, tB);
-            var sequential = math.mul(tA, math.mul(tB, p));
-            var direct = math.mul(composed, p);
-
-            AssertApprox(sequential, direct);
+            Approx(math.mul(tA, math.mul(tB, p)), math.mul(composed, p));
         }
     }
 }

@@ -1,4 +1,5 @@
 using Sia.Math;
+using static Sia.Math.Tests.TestAssert;
 
 namespace Sia.Math.Tests;
 
@@ -45,7 +46,6 @@ public class QuaternionTests
         {
             var q = RandomUnitQuaternion();
             var r = math.mul(q, math.inverse(q));
-            // mul(q, inverse(q)) == identity up to sign (q and -q represent the same rotation)
             var dotToIdentity = System.Math.Abs(math.dot(r, quaternion.identity));
             Assert.True(dotToIdentity > 1f - 1e-3f);
         }
@@ -59,7 +59,7 @@ public class QuaternionTests
             var q = RandomUnitQuaternion();
             var v = new float3(NextFloat() * 10f, NextFloat() * 10f, NextFloat() * 10f);
             var rotated = math.rotate(q, v);
-            AssertApproxEqual(math.length(v), math.length(rotated));
+            Approx(math.length(v), math.length(rotated));
         }
     }
 
@@ -97,8 +97,4 @@ public class QuaternionTests
             Assert.True(d > 1f - 1e-2f);
         }
     }
-
-    private static void AssertApproxEqual(float expected, float actual, float relTol = 1e-3f) =>
-        Assert.True(System.Math.Abs(expected - actual) <= relTol * System.Math.Max(1f, System.Math.Abs(expected)),
-            $"expected {expected}, got {actual}");
 }

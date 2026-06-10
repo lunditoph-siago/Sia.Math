@@ -4,12 +4,8 @@ namespace Sia.Math.Tests;
 
 public class MatrixTests
 {
-    private static readonly Random Rng = new(271828);
+    private static readonly TestRng Rng = new(271828);
 
-    private static float NextFloat() => (float)(Rng.NextDouble() * 4.0 - 2.0);
-
-    // Independent (hand-written, not reusing Sia.Math) determinant checks, so "pick an invertible
-    // matrix" doesn't circularly depend on the inverse()/mul() implementations under test.
     private static float Det2(float2x2 m) => m[0][0] * m[1][1] - m[0][1] * m[1][0];
 
     private static float Det3(float3x3 m) =>
@@ -54,7 +50,7 @@ public class MatrixTests
     private static float2x2 RandomInvertible2x2()
     {
         float2x2 m;
-        do { m = new float2x2(NextFloat(), NextFloat(), NextFloat(), NextFloat()); }
+        do { m = new float2x2(Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f)); }
         while (System.Math.Abs(Det2(m)) < 0.1f);
         return m;
     }
@@ -65,9 +61,9 @@ public class MatrixTests
         do
         {
             m = new float3x3(
-                NextFloat(), NextFloat(), NextFloat(),
-                NextFloat(), NextFloat(), NextFloat(),
-                NextFloat(), NextFloat(), NextFloat());
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f),
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f),
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f));
         }
         while (System.Math.Abs(Det3(m)) < 0.1f);
         return m;
@@ -79,10 +75,10 @@ public class MatrixTests
         do
         {
             m = new float4x4(
-                NextFloat(), NextFloat(), NextFloat(), NextFloat(),
-                NextFloat(), NextFloat(), NextFloat(), NextFloat(),
-                NextFloat(), NextFloat(), NextFloat(), NextFloat(),
-                NextFloat(), NextFloat(), NextFloat(), NextFloat());
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f),
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f),
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f),
+                Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f));
         }
         while (System.Math.Abs(Det4(m)) < 0.1f);
         return m;
@@ -176,7 +172,7 @@ public class MatrixTests
     {
         for (var i = 0; i < 32; i++)
         {
-            var v = new float4(NextFloat(), NextFloat(), NextFloat(), NextFloat());
+            var v = new float4(Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f));
             var m = RandomInvertible4x4();
             var result = math.mul(v, m);
 
@@ -198,7 +194,7 @@ public class MatrixTests
         for (var i = 0; i < 32; i++)
         {
             var m = RandomInvertible4x4();
-            var v = new float4(NextFloat(), NextFloat(), NextFloat(), NextFloat());
+            var v = new float4(Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f), Rng.Float(-2f, 2f));
             var result = math.mul(m, v);
 
             for (var row = 0; row < 4; row++)
