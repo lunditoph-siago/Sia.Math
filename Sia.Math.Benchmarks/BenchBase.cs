@@ -1,10 +1,12 @@
 using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 
 namespace Sia.Math.Benchmarks;
 
 [MemoryDiagnoser(false)]
+[DisassemblyDiagnoser]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
 [CategoriesColumn]
 public abstract class BenchBase

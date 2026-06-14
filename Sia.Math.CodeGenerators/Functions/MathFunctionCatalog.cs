@@ -85,7 +85,7 @@ public static class MathFunctionCatalog
                     _ => throw new ArgumentOutOfRangeException()
                 };
             }
-            if (sig.Type is BaseType.Int or BaseType.Float && sig.Shape.IsSimdEligible)
+            if (sig.Type is BaseType.Int or BaseType.Float or BaseType.Double && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
                 return [Attr, $"public static {name} abs({name} x) => new {name}({vc}.Abs(x.data));"];
@@ -99,7 +99,70 @@ public static class MathFunctionCatalog
             };
         }),
 
-        Trig("tan"), Trig("sinh"), Trig("cosh"), Trig("tanh"),
+        Fn("tan", [BaseType.Float, BaseType.Double], (1, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Dimension == 1)
+            {
+                var cast = sig.Type == BaseType.Float ? "System.MathF.Tan" : "System.Math.Tan";
+                return [Attr, $"public static {name} tan({name} x) => {cast}(x);"];
+            }
+            return [
+                Attr,
+                $"public static {name} tan({name} x)",
+                "{",
+                "    sincos(x, out var s, out var c);",
+                "    return s / c;",
+                "}"
+            ];
+        }),
+
+        Fn("sinh", [BaseType.Float, BaseType.Double], (1, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Dimension == 1)
+            {
+                var cast = sig.Type == BaseType.Float ? "System.MathF.Sinh" : "System.Math.Sinh";
+                return [Attr, $"public static {name} sinh({name} x) => {cast}(x);"];
+            }
+            var two = sig.Type.ToTypedLiteral(2);
+            return [Attr, $"public static {name} sinh({name} x) => (exp(x) - exp(-x)) / {two};"];
+        }),
+
+        Fn("cosh", [BaseType.Float, BaseType.Double], (1, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Dimension == 1)
+            {
+                var cast = sig.Type == BaseType.Float ? "System.MathF.Cosh" : "System.Math.Cosh";
+                return [Attr, $"public static {name} cosh({name} x) => {cast}(x);"];
+            }
+            var two = sig.Type.ToTypedLiteral(2);
+            return [Attr, $"public static {name} cosh({name} x) => (exp(x) + exp(-x)) / {two};"];
+        }),
+
+        Fn("tanh", [BaseType.Float, BaseType.Double], (1, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Dimension == 1)
+            {
+                var cast = sig.Type == BaseType.Float ? "System.MathF.Tanh" : "System.Math.Tanh";
+                return [Attr, $"public static {name} tanh({name} x) => {cast}(x);"];
+            }
+            var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+            var one = sig.Type.ToTypedLiteral(1);
+            var two = sig.Type.ToTypedLiteral(2);
+            return [
+                Attr,
+                $"public static {name} tanh({name} x)",
+                "{",
+                $"    var e = exp(abs(x) * {two});",
+                $"    var t = {one} - {two} / (e + {one});",
+                $"    return new {name}({vc}.CopySign(t.data, x.data));",
+                "}"
+            ];
+        }),
+
         Trig("asin"), Trig("acos"), Trig("atan"),
         Trig("pow"),
 
@@ -235,6 +298,19 @@ public static class MathFunctionCatalog
         {
             var name = sig.Shape.TypeName;
             var minNormal = sig.Type == BaseType.Double ? "DBL_MIN_NORMAL" : "FLT_MIN_NORMAL";
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [
+                    Attr,
+                    $"public static {name} normalizesafe({name} x, {name} defaultvalue = default)",
+                    "{",
+                    "    var len = dot(x, x);",
+                    $"    var mask = {vc}.GreaterThan({vc}.Create(len), {vc}.Create({minNormal}));",
+                    $"    return new {name}({vc}.ConditionalSelect(mask, x.data * {vc}.Create(rsqrt(len)), defaultvalue.data));",
+                    "}"
+                ];
+            }
             return [
                 Attr,
                 $"public static {name} normalizesafe({name} x, {name} defaultvalue = default)",
@@ -248,7 +324,7 @@ public static class MathFunctionCatalog
         Fn("any", [BaseType.Bool, BaseType.Int, BaseType.UInt, BaseType.Float, BaseType.Double], (2, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Type != BaseType.Bool && sig.Shape.IsSimdEligible && Simd.SimdStrategy.IsExactFit(sig.Type, sig.Dimension))
+            if (sig.Type != BaseType.Bool && sig.Shape.IsSimdEligible)
             {
                 var zero = sig.Type.ToTypedLiteral(0);
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
@@ -263,11 +339,18 @@ public static class MathFunctionCatalog
         Fn("all", [BaseType.Bool, BaseType.Int, BaseType.UInt, BaseType.Float, BaseType.Double], (2, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Type != BaseType.Bool && sig.Shape.IsSimdEligible && Simd.SimdStrategy.IsExactFit(sig.Type, sig.Dimension))
+            if (sig.Type != BaseType.Bool && sig.Shape.IsSimdEligible)
             {
                 var zero = sig.Type.ToTypedLiteral(0);
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
-                return [Attr, $"public static bool all({name} x) => {vc}.None(x.data, {zero});"];
+                if (Simd.SimdStrategy.IsExactFit(sig.Type, sig.Dimension))
+                    return [Attr, $"public static bool all({name} x) => {vc}.None(x.data, {zero});"];
+
+                var one = sig.Type.ToTypedLiteral(1);
+                var laneCount = Simd.SimdStrategy.NativeLaneCount(sig.Type, sig.Dimension);
+                var patch = string.Concat(Range(laneCount - sig.Dimension)
+                    .Select(i => $".WithElement({sig.Dimension + i}, {one})"));
+                return [Attr, $"public static bool all({name} x) => {vc}.None(x.data{patch}, {zero});"];
             }
             var cond = string.Join(" && ", Range(sig.Dimension).Select(i =>
                 sig.Type == BaseType.Bool ? $"x.{TypeShape.Components[i]}" :
@@ -291,13 +374,14 @@ public static class MathFunctionCatalog
         Fn("sincos", [BaseType.Float, BaseType.Double], (1, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Type == BaseType.Float && sig.Dimension >= 2 && sig.Shape.IsSimdEligible)
+            if (sig.Dimension >= 2 && sig.Shape.IsSimdEligible)
             {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
                 return [
                     Attr,
                     $"public static void sincos({name} v, out {name} s, out {name} c)",
                     "{",
-                    "    var (sin, cos) = Vector128.SinCos(v.data);",
+                    $"    var (sin, cos) = {vc}.SinCos(v.data);",
                     $"    s = new {name}(sin);",
                     $"    c = new {name}(cos);",
                     "}"
@@ -309,8 +393,13 @@ public static class MathFunctionCatalog
         Fn("radians", [BaseType.Float, BaseType.Double], (1, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} radians({name} x) => new(Vector128.DegreesToRadians(x.data));"];
+            if (sig.Dimension >= 2 && sig.Shape.IsSimdEligible)
+            {
+                if (sig.Type == BaseType.Float)
+                    return [Attr, $"public static {name} radians({name} x) => new {name}(Vector128.DegreesToRadians(x.data));"];
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} radians({name} x) => new {name}(x.data * {vc}.Create(TORADIANS_DBL));"];
+            }
             var constant = sig.Type == BaseType.Double ? "TORADIANS_DBL" : "TORADIANS";
             return [Attr, $"public static {name} radians({name} x) => x * {constant};"];
         }),
@@ -318,8 +407,13 @@ public static class MathFunctionCatalog
         Fn("degrees", [BaseType.Float, BaseType.Double], (1, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} degrees({name} x) => new(Vector128.RadiansToDegrees(x.data));"];
+            if (sig.Dimension >= 2 && sig.Shape.IsSimdEligible)
+            {
+                if (sig.Type == BaseType.Float)
+                    return [Attr, $"public static {name} degrees({name} x) => new {name}(Vector128.RadiansToDegrees(x.data));"];
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} degrees({name} x) => new {name}(x.data * {vc}.Create(TODEGREES_DBL));"];
+            }
             var constant = sig.Type == BaseType.Double ? "TODEGREES_DBL" : "TODEGREES";
             return [Attr, $"public static {name} degrees({name} x) => x * {constant};"];
         }),
@@ -327,7 +421,7 @@ public static class MathFunctionCatalog
         Fn("csum", [BaseType.Int, BaseType.UInt, BaseType.Float, BaseType.Double], (2, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Shape.IsSimdEligible && Simd.SimdStrategy.IsExactFit(sig.Type, sig.Dimension))
+            if (sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
                 return [Attr, $"public static {sig.Type.ToBaseTypeName()} csum({name} x) => {vc}.Sum(x.data);"];
@@ -338,8 +432,11 @@ public static class MathFunctionCatalog
         Fn("round", [BaseType.Float, BaseType.Double], (2, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} round({name} x) => new {name}(Vector128.Round(x.data));"];
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} round({name} x) => new {name}({vc}.Round(x.data));"];
+            }
             return [Attr, $"public static {name} round({name} x) => new {name}({PerComp("round", sig.Dimension)});"];
         }),
 
@@ -363,21 +460,197 @@ public static class MathFunctionCatalog
             return [Attr, $"public static {name} atan2({name} y, {name} x) => new {name}({string.Join(", ", Range(sig.Dimension).Select(i => $"{scalarCall}(y.{TypeShape.Components[i]}, x.{TypeShape.Components[i]})"))});"];
         }),
 
-        Cw("floor"), Cw("ceil"), Cw("frac"), Cw("sign"),
-        Cw("smoothstep", 3),
-        Cw("ceilpow2", 1, [BaseType.Int, BaseType.UInt]),
-        Cw("floorlog2", 1, [BaseType.Int, BaseType.UInt], retPrefix: "int"),
-        Cw("ceillog2", 1, [BaseType.Int, BaseType.UInt], retPrefix: "int"),
-        Cw("countbits", 1, [BaseType.Int, BaseType.UInt], retPrefix: "int"),
-        Cw("lzcnt", 1, [BaseType.Int, BaseType.UInt], retPrefix: "int"),
-        Cw("tzcnt", 1, [BaseType.Int, BaseType.UInt], retPrefix: "int"),
-        Cw("reversebits", 1, [BaseType.Int, BaseType.UInt]),
+        Fn("floor", [BaseType.Float, BaseType.Double], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} floor({name} x) => new {name}({vc}.Floor(x.data));"];
+            }
+            return [Attr, $"public static {name} floor({name} x) => new {name}({PerComp("floor", sig.Dimension)});"];
+        }),
+
+        Fn("ceil", [BaseType.Float, BaseType.Double], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} ceil({name} x) => new {name}({vc}.Ceiling(x.data));"];
+            }
+            return [Attr, $"public static {name} ceil({name} x) => new {name}({PerComp("ceil", sig.Dimension)});"];
+        }),
+
+        Fn("frac", [BaseType.Float, BaseType.Double], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} frac({name} x) => new {name}(x.data - {vc}.Floor(x.data));"];
+            }
+            return [Attr, $"public static {name} frac({name} x) => new {name}({PerComp("frac", sig.Dimension)});"];
+        }),
+
+        Fn("sign", [BaseType.Float, BaseType.Double], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                var vt = Simd.SimdStrategy.NativeVectorTypeName(sig.Type, sig.Dimension);
+                return [
+                    Attr,
+                    $"public static {name} sign({name} x)",
+                    "{",
+                    $"    var pos = {vc}.ConditionalSelect({vc}.GreaterThan(x.data, {vt}.Zero), {vt}.One, {vt}.Zero);",
+                    $"    var neg = {vc}.ConditionalSelect({vc}.LessThan(x.data, {vt}.Zero), {vt}.One, {vt}.Zero);",
+                    $"    return new {name}(pos - neg);",
+                    "}"
+                ];
+            }
+            return [Attr, $"public static {name} sign({name} x) => new {name}({PerComp("sign", sig.Dimension)});"];
+        }),
+
+        Fn("smoothstep", [BaseType.Float, BaseType.Double], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var two = sig.Type.ToTypedLiteral(2);
+            var three = sig.Type.ToTypedLiteral(3);
+            return [
+                Attr,
+                $"public static {name} smoothstep({name} a, {name} b, {name} x)",
+                "{",
+                "    var t = saturate((x - a) / (b - a));",
+                $"    return t * t * ({three} - {two} * t);",
+                "}"
+            ];
+        }),
+
+        Fn("ceilpow2", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var one = sig.Type.ToTypedLiteral(1);
+            return [
+                Attr,
+                $"public static {name} ceilpow2({name} x)",
+                "{",
+                $"    x -= {one};",
+                "    x |= x >> 1;",
+                "    x |= x >> 2;",
+                "    x |= x >> 4;",
+                "    x |= x >> 8;",
+                "    x |= x >> 16;",
+                $"    return x + {one};",
+                "}"
+            ];
+        }),
+
+        Fn("countbits", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var retType = BaseType.Int.ToTypeName(sig.Dimension, 1);
+            var uName = BaseType.UInt.ToTypeName(sig.Dimension, 1);
+            var xExpr = sig.Type == BaseType.Int ? $"(({uName})x)" : "x";
+            return [
+                Attr,
+                $"public static {retType} countbits({name} x)",
+                "{",
+                $"    var v = {xExpr};",
+                "    v -= (v >> 1) & 0x55555555u;",
+                "    v = (v & 0x33333333u) + ((v >> 2) & 0x33333333u);",
+                "    v = (v + (v >> 4)) & 0x0F0F0F0Fu;",
+                $"    return ({retType})(v * 0x01010101u >> 24);",
+                "}"
+            ];
+        }),
+
+        Fn("lzcnt", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var retType = BaseType.Int.ToTypeName(sig.Dimension, 1);
+            var uName = BaseType.UInt.ToTypeName(sig.Dimension, 1);
+            var xExpr = sig.Type == BaseType.Int ? $"(({uName})x)" : "x";
+            return [
+                Attr,
+                $"public static {retType} lzcnt({name} x)",
+                "{",
+                $"    var v = {xExpr};",
+                "    v |= v >> 1;",
+                "    v |= v >> 2;",
+                "    v |= v >> 4;",
+                "    v |= v >> 8;",
+                "    v |= v >> 16;",
+                "    return 32 - countbits(v);",
+                "}"
+            ];
+        }),
+
+        Fn("tzcnt", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var retType = BaseType.Int.ToTypeName(sig.Dimension, 1);
+            var uName = BaseType.UInt.ToTypeName(sig.Dimension, 1);
+            var xExpr = sig.Type == BaseType.Int ? $"(({uName})x)" : "x";
+            return [
+                Attr,
+                $"public static {retType} tzcnt({name} x)",
+                "{",
+                $"    var v = {xExpr};",
+                "    return countbits((v & (0u - v)) - 1u);",
+                "}"
+            ];
+        }),
+
+        Fn("floorlog2", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var retType = BaseType.Int.ToTypeName(sig.Dimension, 1);
+            var uName = BaseType.UInt.ToTypeName(sig.Dimension, 1);
+            var xExpr = sig.Type == BaseType.Int ? $"(({uName})x)" : "x";
+            return [Attr, $"public static {retType} floorlog2({name} x) => 31 - lzcnt({xExpr});"];
+        }),
+
+        Fn("ceillog2", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var retType = BaseType.Int.ToTypeName(sig.Dimension, 1);
+            var uName = BaseType.UInt.ToTypeName(sig.Dimension, 1);
+            var xExpr = sig.Type == BaseType.Int ? $"(({uName})x)" : "x";
+            return [Attr, $"public static {retType} ceillog2({name} x) => 32 - lzcnt({xExpr} - 1u);"];
+        }),
+
+        Fn("reversebits", [BaseType.Int, BaseType.UInt], (2, 4), sig =>
+        {
+            var name = sig.Shape.TypeName;
+            var uName = BaseType.UInt.ToTypeName(sig.Dimension, 1);
+            var xExpr = sig.Type == BaseType.Int ? $"(({uName})x)" : "x";
+            return [
+                Attr,
+                $"public static {name} reversebits({name} x)",
+                "{",
+                $"    var v = {xExpr};",
+                "    v = ((v >> 1) & 0x55555555u) | ((v & 0x55555555u) << 1);",
+                "    v = ((v >> 2) & 0x33333333u) | ((v & 0x33333333u) << 2);",
+                "    v = ((v >> 4) & 0x0F0F0F0Fu) | ((v & 0x0F0F0F0Fu) << 4);",
+                "    v = ((v >> 8) & 0x00FF00FFu) | ((v & 0x00FF00FFu) << 8);",
+                "    v = (v >> 16) | (v << 16);",
+                $"    return ({name})v;",
+                "}"
+            ];
+        }),
 
         Fn("step", [BaseType.Float, BaseType.Double], (2, 4), sig =>
         {
             var name = sig.Shape.TypeName;
             var zero = sig.Type.ToTypedLiteral(0);
             var one = sig.Type.ToTypedLiteral(1);
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {name} step({name} y, {name} x) => new {name}({vc}.ConditionalSelect({vc}.GreaterThanOrEqual(x.data, y.data), {vc}.Create({one}), {vc}.Create({zero})));"];
+            }
             return [Attr, $"public static {name} step({name} y, {name} x) => select({zero}, {one}, x >= y);"];
         }),
 
@@ -448,10 +721,8 @@ public static class MathFunctionCatalog
     {
         var mathName = name switch
         {
-            "sin" => "Sin", "cos" => "Cos", "tan" => "Tan",
-            "sinh" => "Sinh", "cosh" => "Cosh", "tanh" => "Tanh",
             "asin" => "Asin", "acos" => "Acos", "atan" => "Atan",
-            "exp" => "Exp", "log" => "Log", "pow" => "Pow",
+            "pow" => "Pow",
             _ => char.ToUpper(name[0]) + name.Substring(1)
         };
 
@@ -481,25 +752,12 @@ public static class MathFunctionCatalog
                 var cast = sig.Type == BaseType.Float ? $"System.MathF.{simdMethod}" : $"System.Math.{simdMethod}";
                 return [Attr, $"public static {typeName} {name}({typeName} x) => {cast}(x);"];
             }
-            if (sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {typeName} {name}({typeName} x) => new {typeName}(Vector128.{simdMethod}(x.data));"];
+            if (sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [Attr, $"public static {typeName} {name}({typeName} x) => new {typeName}({vc}.{simdMethod}(x.data));"];
+            }
             return [Attr, $"public static {typeName} {name}({typeName} x) => new({PerComp(name, sig.Dimension)});"];
-        });
-    }
-
-    private static MathFunction Cw(string name, int argCount = 1, BaseType[]? types = null, string retPrefix = "")
-    {
-        types ??= [BaseType.Float, BaseType.Double];
-        return Fn(name, types, (2, 4), sig =>
-        {
-            var typeName = sig.Shape.TypeName;
-            var retType = string.IsNullOrEmpty(retPrefix) ? typeName : $"{retPrefix}{sig.Dimension}";
-            if (argCount == 1)
-                return [Attr, $"public static {retType} {name}({typeName} x) => new {retType}({PerComp(name, sig.Dimension)});"];
-            else if (argCount == 2)
-                return [Attr, $"public static {typeName} {name}({typeName} y, {typeName} x) => new {typeName}({string.Join(", ", Range(sig.Dimension).Select(i => $"{name}(y.{TypeShape.Components[i]}, x.{TypeShape.Components[i]})"))});"];
-            else
-                return [Attr, $"public static {typeName} {name}({typeName} a, {typeName} b, {typeName} x) => new {typeName}({string.Join(", ", Range(sig.Dimension).Select(i => $"{name}(a.{TypeShape.Components[i]}, b.{TypeShape.Components[i]}, x.{TypeShape.Components[i]})"))});"];
         });
     }
 

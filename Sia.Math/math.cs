@@ -713,13 +713,27 @@ public static partial class math
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static uint2 fold_to_uint(double2 x) => uint2(fold_to_uint(x.x), fold_to_uint(x.y));
+    internal static uint2 fold_to_uint(double2 x)
+    {
+        var bits = x.data.AsUInt64();
+        return new uint2(Vector128.Narrow((bits >> 32) ^ bits, Vector128<ulong>.Zero));
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static uint3 fold_to_uint(double3 x) => uint3(fold_to_uint(x.x), fold_to_uint(x.y), fold_to_uint(x.z));
+    internal static uint3 fold_to_uint(double3 x)
+    {
+        var bits = x.data.AsUInt64();
+        var folded = (bits >> 32) ^ bits;
+        return new uint3(Vector128.Narrow(Vector256.GetLower(folded), Vector256.GetUpper(folded)));
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static uint4 fold_to_uint(double4 x) => uint4(fold_to_uint(x.x), fold_to_uint(x.y), fold_to_uint(x.z), fold_to_uint(x.w));
+    internal static uint4 fold_to_uint(double4 x)
+    {
+        var bits = x.data.AsUInt64();
+        var folded = (bits >> 32) ^ bits;
+        return new uint4(Vector128.Narrow(Vector256.GetLower(folded), Vector256.GetUpper(folded)));
+    }
 
     [StructLayout(LayoutKind.Explicit)]
     internal struct LongDoubleUnion

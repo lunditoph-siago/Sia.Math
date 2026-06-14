@@ -5,7 +5,7 @@ namespace Sia.Math.CodeGenerators.Capabilities;
 
 public static class Conversions
 {
-    private static readonly string[] s_Imports = ["System.Runtime.CompilerServices"];
+    private static readonly string[] s_Imports = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"];
 
     public static CodeFragment Generate(TypeShape shape)
     {
@@ -70,39 +70,48 @@ public static class Conversions
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         typeBody.AppendLine($"        public {shape.TypeName}({srcName} v)");
         typeBody.AppendLine("        {");
-        var args = new List<string>();
-        for (var i = 0; i < fieldCount; i++)
-        {
-            var rhs = isScalar ? "v" : $"v.{fields[i]}";
-            if (srcType != shape.BaseType)
-            {
-                if (srcType == BaseType.Bool)
-                {
-                    rhs = shape.IsMatrix
-                        ? $"math.select(new {fieldType}({shape.BaseType.ToTypedLiteral(0)}), new {fieldType}({shape.BaseType.ToTypedLiteral(1)}), {rhs})"
-                        : $"{rhs} ? {shape.BaseType.ToTypedLiteral(1)} : {shape.BaseType.ToTypedLiteral(0)}";
-                }
-                else if (!shape.IsMatrix || isExplicit)
-                {
-                    rhs = $"({fieldType}){rhs}";
-                }
-            }
-            args.Add(rhs);
-        }
 
-        if (shape.IsMatrix || shape.BaseType == BaseType.Bool)
+        if (!isScalar && !shape.IsMatrix && srcType != BaseType.Bool && shape.BaseType != BaseType.Bool && srcType != shape.BaseType)
         {
-            for (var i = 0; i < fieldCount; i++)
-                typeBody.AppendLine($"            this.{fields[i]} = {args[i]};");
+            foreach (var line in BuildVectorConversionBody(shape.BaseType, srcType, shape.Rows))
+                typeBody.AppendLine(line);
         }
         else
         {
-            var laneCount = Simd.SimdStrategy.NativeLaneCount(shape.BaseType, shape.Rows);
-            var zero = shape.BaseType.ToTypedLiteral(0);
-            for (var i = fieldCount; i < laneCount; i++)
-                args.Add(zero);
-            var vectorClassName = Simd.SimdStrategy.NativeVectorClassName(shape.BaseType, shape.Rows);
-            typeBody.AppendLine($"            data = {vectorClassName}.Create({string.Join(", ", args)});");
+            var args = new List<string>();
+            for (var i = 0; i < fieldCount; i++)
+            {
+                var rhs = isScalar ? "v" : $"v.{fields[i]}";
+                if (srcType != shape.BaseType)
+                {
+                    if (srcType == BaseType.Bool)
+                    {
+                        rhs = shape.IsMatrix
+                            ? $"math.select(new {fieldType}({shape.BaseType.ToTypedLiteral(0)}), new {fieldType}({shape.BaseType.ToTypedLiteral(1)}), {rhs})"
+                            : $"{rhs} ? {shape.BaseType.ToTypedLiteral(1)} : {shape.BaseType.ToTypedLiteral(0)}";
+                    }
+                    else if (!shape.IsMatrix || isExplicit)
+                    {
+                        rhs = $"({fieldType}){rhs}";
+                    }
+                }
+                args.Add(rhs);
+            }
+
+            if (shape.IsMatrix || shape.BaseType == BaseType.Bool)
+            {
+                for (var i = 0; i < fieldCount; i++)
+                    typeBody.AppendLine($"            this.{fields[i]} = {args[i]};");
+            }
+            else
+            {
+                var laneCount = Simd.SimdStrategy.NativeLaneCount(shape.BaseType, shape.Rows);
+                var zero = shape.BaseType.ToTypedLiteral(0);
+                for (var i = fieldCount; i < laneCount; i++)
+                    args.Add(zero);
+                var vectorClassName = Simd.SimdStrategy.NativeVectorClassName(shape.BaseType, shape.Rows);
+                typeBody.AppendLine($"            data = {vectorClassName}.Create({string.Join(", ", args)});");
+            }
         }
         typeBody.AppendLine("        }");
 
@@ -111,5 +120,56 @@ public static class Conversions
 
         mathBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         mathBody.AppendLine($"        public static {shape.TypeName} {shape.TypeName}({srcName} v) => new {shape.TypeName}(v);");
+    }
+
+    private static string[] BuildVectorConversionBody(BaseType dstType, BaseType srcType, int rows)
+    {
+        if (dstType is BaseType.Int or BaseType.UInt && srcType is BaseType.Int or BaseType.UInt)
+        {
+            var asMethod = dstType == BaseType.Int ? "AsInt32" : "AsUInt32";
+            return [$"            data = v.data.{asMethod}();"];
+        }
+
+        if (srcType != BaseType.Double && dstType != BaseType.Double)
+        {
+            var method = dstType == BaseType.Float ? "ConvertToSingle"
+                : dstType == BaseType.Int ? "ConvertToInt32" : "ConvertToUInt32";
+            return [$"            data = Vector128.{method}(v.data);"];
+        }
+
+        var doubleLanes = Simd.SimdStrategy.NativeLaneCount(BaseType.Double, rows);
+
+        if (dstType == BaseType.Double)
+        {
+            if (srcType == BaseType.Float)
+            {
+                return doubleLanes == 2
+                    ? ["            var (lo, _) = Vector128.Widen(v.data);", "            data = lo;"]
+                    : ["            var (lo, hi) = Vector128.Widen(v.data);", "            data = Vector256.Create(lo, hi);"];
+            }
+            return doubleLanes == 2
+                ? ["            var (lo, _) = Vector128.Widen(v.data);", "            data = Vector128.ConvertToDouble(lo);"]
+                : [
+                    "            var (lo, hi) = Vector128.Widen(v.data);",
+                    "            data = Vector256.ConvertToDouble(Vector256.Create(lo, hi));"
+                ];
+        }
+
+        if (dstType == BaseType.Float)
+        {
+            return doubleLanes == 2
+                ? ["            data = Vector128.Narrow(v.data, Vector128<double>.Zero);"]
+                : ["            data = Vector128.Narrow(Vector256.GetLower(v.data), Vector256.GetUpper(v.data));"];
+        }
+
+        var (convert, zero) = dstType == BaseType.Int
+            ? ("ConvertToInt64", "Vector128<long>.Zero")
+            : ("ConvertToUInt64", "Vector128<ulong>.Zero");
+        return doubleLanes == 2
+            ? [$"            var w = Vector128.{convert}(v.data);", $"            data = Vector128.NarrowWithSaturation(w, {zero});"]
+            : [
+                $"            var w = Vector256.{convert}(v.data);",
+                "            data = Vector128.NarrowWithSaturation(Vector256.GetLower(w), Vector256.GetUpper(w));"
+            ];
     }
 }

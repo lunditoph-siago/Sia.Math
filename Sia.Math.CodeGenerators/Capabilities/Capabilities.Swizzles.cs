@@ -29,7 +29,7 @@ public static class Swizzles
 
         return new CodeFragment
         {
-            Usings = ["System.Runtime.CompilerServices"],
+            Usings = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"],
             TypeBody = body.ToString().TrimEnd()
         };
     }
@@ -50,7 +50,7 @@ public static class Swizzles
         body.AppendLine($"        public {fieldType} {string.Concat(names)}");
         body.AppendLine("        {");
         body.AppendLine("            [MethodImpl(MethodImplOptions.AggressiveInlining)]");
-        body.AppendLine($"            get => new {fieldType}({string.Join(", ", names)});");
+        body.AppendLine($"            get => {BuildGetter(shape, sw, fieldType, names)};");
         if (allowSetter)
         {
             body.AppendLine("            [MethodImpl(MethodImplOptions.AggressiveInlining)]");
@@ -60,5 +60,40 @@ public static class Swizzles
             body.AppendLine("            }");
         }
         body.AppendLine("        }");
+    }
+
+    private static string BuildGetter(TypeShape shape, int[] sw, string fieldType, string[] names)
+    {
+        var bt = shape.BaseType;
+        if (bt == BaseType.Bool)
+            return $"new {fieldType}({string.Join(", ", names)})";
+
+        var comp = sw.Length;
+        var srcLanes = Simd.SimdStrategy.NativeLaneCount(bt, shape.Rows);
+        var dstLanes = Simd.SimdStrategy.NativeLaneCount(bt, comp);
+        var width = System.Math.Max(srcLanes, dstLanes);
+
+        var shuffleClass = bt == BaseType.Double
+            ? (width == 2 ? "Vector128" : "Vector256")
+            : "Vector128";
+
+        var suffix = bt switch
+        {
+            BaseType.Double => "L",
+            BaseType.UInt => "u",
+            _ => ""
+        };
+
+        var indices = string.Join(", ", Enumerable.Range(0, width)
+            .Select(i => $"{(i < comp ? sw[i] : width)}{suffix}"));
+
+        var source = srcLanes < width
+            ? "Vector256.Create(data, Vector128<double>.Zero)"
+            : "data";
+
+        var shuffled = $"{shuffleClass}.Shuffle({source}, {shuffleClass}.Create({indices}))";
+        var result = dstLanes < width ? $"Vector256.GetLower({shuffled})" : shuffled;
+
+        return $"new {fieldType}({result})";
     }
 }
