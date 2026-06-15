@@ -190,3 +190,99 @@ public class QuaternionRotate : BenchBase
 }
 
 #endregion
+
+#region Length
+
+public class QuaternionLength : BenchBase
+{
+    private quaternion _sa;
+    private Quaternion _qa;
+
+    protected override void OnSetup()
+    {
+        _sa = quaternion.AxisAngle(math.normalize(new float3(NextF(), NextF(), NextF())), NextF() * 0.03f);
+        _qa = new(_sa.value.x, _sa.value.y, _sa.value.z, _sa.value.w);
+    }
+
+    [Benchmark(Baseline = true), BenchmarkCategory("Length")]
+    public void Sys_Length() => Sink(_qa.Length());
+
+    [Benchmark, BenchmarkCategory("Length")]
+    public void Sia_Length() => Sink(math.length(_sa));
+}
+
+#endregion
+
+#region LengthSq
+
+public class QuaternionLengthSq : BenchBase
+{
+    private quaternion _sa;
+    private Quaternion _qa;
+
+    protected override void OnSetup()
+    {
+        _sa = quaternion.AxisAngle(math.normalize(new float3(NextF(), NextF(), NextF())), NextF() * 0.03f);
+        _qa = new(_sa.value.x, _sa.value.y, _sa.value.z, _sa.value.w);
+    }
+
+    [Benchmark(Baseline = true), BenchmarkCategory("LengthSq")]
+    public void Sys_LengthSq() => Sink(_qa.LengthSquared());
+
+    [Benchmark, BenchmarkCategory("LengthSq")]
+    public void Sia_LengthSq() => Sink(math.lengthsq(_sa));
+}
+
+#endregion
+
+#region CreateFromAxisAngle
+
+public class QuaternionCreateFromAxisAngle : BenchBase
+{
+    private float3 _saxis;
+    private float _sangle;
+    private Vector3 _vaxis;
+
+    protected override void OnSetup()
+    {
+        _saxis = math.normalize(new float3(NextF(), NextF(), NextF()));
+        _sangle = NextF() * 0.03f;
+        _vaxis = new(_saxis.x, _saxis.y, _saxis.z);
+    }
+
+    [Benchmark(Baseline = true), BenchmarkCategory("CreateFromAxisAngle")]
+    public void Sys_CreateFromAxisAngle() { var r = Quaternion.CreateFromAxisAngle(_vaxis, _sangle); Sink(r.X); }
+
+    [Benchmark, BenchmarkCategory("CreateFromAxisAngle")]
+    public void Sia_CreateFromAxisAngle() { var r = quaternion.AxisAngle(_saxis, _sangle); Sink(r.value.x); }
+}
+
+#endregion
+
+#region CreateFromRotationMatrix
+
+public class QuaternionCreateFromRotationMatrix : BenchBase
+{
+    private float4x4 _sa;
+    private Matrix4x4 _ma;
+
+    protected override void OnSetup()
+    {
+        var axis = math.normalize(new float3(NextF(), NextF(), NextF()));
+        var angle = NextF() * 0.03f;
+        _ma = Matrix4x4.CreateFromQuaternion(Quaternion.CreateFromAxisAngle(new(axis.x, axis.y, axis.z), angle));
+        _sa = new(
+            _ma.M11, _ma.M12, _ma.M13, _ma.M14,
+            _ma.M21, _ma.M22, _ma.M23, _ma.M24,
+            _ma.M31, _ma.M32, _ma.M33, _ma.M34,
+            _ma.M41, _ma.M42, _ma.M43, _ma.M44);
+    }
+
+    [Benchmark(Baseline = true), BenchmarkCategory("CreateFromRotationMatrix")]
+    public void Sys_CreateFromRotationMatrix() { var r = Quaternion.CreateFromRotationMatrix(_ma); Sink(r.X); }
+
+    [Benchmark, BenchmarkCategory("CreateFromRotationMatrix")]
+    public void Sia_CreateFromRotationMatrix() { var r = math.quaternion(_sa); Sink(r.value.x); }
+}
+
+#endregion
