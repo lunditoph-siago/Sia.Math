@@ -98,6 +98,7 @@ public static class Operators
         var resultType = isCompare ? BaseType.Bool : shape.BaseType;
         var resultName = resultType.ToTypeName(shape.Rows, shape.Columns);
         var typeName = shape.TypeName;
+        var paramType = shape.IsMatrix ? $"in {typeName}" : typeName;
         var fields = shape.IsMatrix ? TypeShape.MatrixFields : TypeShape.VectorFields;
         var count = shape.IsMatrix ? shape.Columns : shape.Rows;
         var scalar = shape.BaseType.ToBaseTypeName();
@@ -107,9 +108,9 @@ public static class Operators
 
         if (isCompare)
         {
-            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {typeName} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs.{fields[i]}"))});");
-            body.AppendLine($"        public static {resultName} operator {op}({scalar} lhs, {typeName} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs {op} rhs.{fields[i]}"))});");
-            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {scalar} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs"))});");
+            body.AppendLine($"        public static {resultName} operator {op}({paramType} lhs, {paramType} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs.{fields[i]}"))});");
+            body.AppendLine($"        public static {resultName} operator {op}({scalar} lhs, {paramType} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs {op} rhs.{fields[i]}"))});");
+            body.AppendLine($"        public static {resultName} operator {op}({paramType} lhs, {scalar} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs"))});");
         }
         else if (!isCompare && !shape.IsMatrix && Simd.SimdStrategy.SupportsSimdOp(op, shape.BaseType, shape.Rows))
         {
@@ -119,15 +120,16 @@ public static class Operators
         }
         else
         {
-            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {typeName} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs.{fields[i]}"))});");
-            body.AppendLine($"        public static {resultName} operator {op}({scalar} lhs, {typeName} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs {op} rhs.{fields[i]}"))});");
-            body.AppendLine($"        public static {resultName} operator {op}({typeName} lhs, {scalar} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs"))});");
+            body.AppendLine($"        public static {resultName} operator {op}({paramType} lhs, {paramType} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs.{fields[i]}"))});");
+            body.AppendLine($"        public static {resultName} operator {op}({scalar} lhs, {paramType} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs {op} rhs.{fields[i]}"))});");
+            body.AppendLine($"        public static {resultName} operator {op}({paramType} lhs, {scalar} rhs) => new {resultName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"lhs.{fields[i]} {op} rhs"))});");
         }
     }
 
     private static void EmitUnaryOp(TypeShape shape, string op, StringBuilder body)
     {
         var typeName = shape.TypeName;
+        var paramType = shape.IsMatrix ? $"in {typeName}" : typeName;
         body.AppendLine();
         body.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
 
@@ -140,7 +142,7 @@ public static class Operators
             var incOp = op == "++" ? "+" : "-";
             var fields = shape.IsMatrix ? TypeShape.MatrixFields : TypeShape.VectorFields;
             var count = shape.IsMatrix ? shape.Columns : shape.Rows;
-            body.AppendLine($"        public static {typeName} operator {op}({typeName} val) => new {typeName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"val.{fields[i]} {incOp} 1"))});");
+            body.AppendLine($"        public static {typeName} operator {op}({paramType} val) => new {typeName}({string.Join(", ", Enumerable.Range(0, count).Select(i => $"val.{fields[i]} {incOp} 1"))});");
         }
         else
         {
@@ -150,13 +152,14 @@ public static class Operators
                 op == "-" && shape is { BaseType: BaseType.UInt, Columns: 1 }
                     ? $"(uint){op}val.{fields[i]}"
                     : $"{op}val.{fields[i]}"));
-            body.AppendLine($"        public static {typeName} operator {op}({typeName} val) => new {typeName}({comps});");
+            body.AppendLine($"        public static {typeName} operator {op}({paramType} val) => new {typeName}({comps});");
         }
     }
 
     private static void EmitShiftOp(TypeShape shape, string op, StringBuilder body)
     {
         var typeName = shape.TypeName;
+        var paramType = shape.IsMatrix ? $"in {typeName}" : typeName;
         body.AppendLine();
         body.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
 
@@ -169,7 +172,7 @@ public static class Operators
             var fields = shape.IsMatrix ? TypeShape.MatrixFields : TypeShape.VectorFields;
             var count = shape.IsMatrix ? shape.Columns : shape.Rows;
             var comps = string.Join(", ", Enumerable.Range(0, count).Select(i => shape.Rows == 1 ? $"x {op} n" : $"x.{fields[i]} {op} n"));
-            body.AppendLine($"        public static {typeName} operator {op}({typeName} x, int n) => new {typeName}({comps});");
+            body.AppendLine($"        public static {typeName} operator {op}({paramType} x, int n) => new {typeName}({comps});");
         }
     }
 }

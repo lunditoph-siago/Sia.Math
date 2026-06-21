@@ -1,8 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
-#pragma warning disable 8981 
+#pragma warning disable 8981
 
 namespace Sia.Math;
 
@@ -94,94 +94,94 @@ public static partial class math
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int asint(uint x) => *(int*)&x;
+    public static int asint(uint x) => (int)x;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int2 asint(uint2 x) => *(int2*)&x;
+    public static int2 asint(uint2 x) => new(x.data.AsInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int3 asint(uint3 x) => *(int3*)&x;
+    public static int3 asint(uint3 x) => new(x.data.AsInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int4 asint(uint4 x) => *(int4*)&x;
+    public static int4 asint(uint4 x) => new(x.data.AsInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int asint(float x) => *(int*)&x;
+    public static int asint(float x) => global::System.BitConverter.SingleToInt32Bits(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int2 asint(float2 x) => *(int2*)&x;
+    public static int2 asint(float2 x) => new(x.data.AsInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int3 asint(float3 x) => *(int3*)&x;
+    public static int3 asint(float3 x) => new(x.data.AsInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int4 asint(float4 x) => *(int4*)&x;
+    public static int4 asint(float4 x) => new(x.data.AsInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint asuint(int x) => (uint)x;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint2 asuint(int2 x) => *(uint2*)&x;
+    public static uint2 asuint(int2 x) => new(x.data.AsUInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint3 asuint(int3 x) => *(uint3*)&x;
+    public static uint3 asuint(int3 x) => new(x.data.AsUInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint4 asuint(int4 x) => *(uint4*)&x;
+    public static uint4 asuint(int4 x) => new(x.data.AsUInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint asuint(float x) => *(uint*)&x;
+    public static uint asuint(float x) => global::System.BitConverter.SingleToUInt32Bits(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint2 asuint(float2 x) => *(uint2*)&x;
+    public static uint2 asuint(float2 x) => new(x.data.AsUInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint3 asuint(float3 x) => *(uint3*)&x;
+    public static uint3 asuint(float3 x) => new(x.data.AsUInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe uint4 asuint(float4 x) => *(uint4*)&x;
+    public static uint4 asuint(float4 x) => new(x.data.AsUInt32());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static long aslong(ulong x) => (long)x;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe long aslong(double x) => *(long*)&x;
+    public static long aslong(double x) => global::System.BitConverter.DoubleToInt64Bits(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong asulong(long x) => (ulong)x;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe ulong asulong(double x) => *(ulong*)&x;
+    public static ulong asulong(double x) => global::System.BitConverter.DoubleToUInt64Bits(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float asfloat(int x) => *(float*)&x;
+    public static float asfloat(int x) => global::System.BitConverter.Int32BitsToSingle(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float2 asfloat(int2 x) => *(float2*)&x;
+    public static float2 asfloat(int2 x) => new(x.data.AsSingle());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float3 asfloat(int3 x) => *(float3*)&x;
+    public static float3 asfloat(int3 x) => new(x.data.AsSingle());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float4 asfloat(int4 x) => *(float4*)&x;
+    public static float4 asfloat(int4 x) => new(x.data.AsSingle());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float asfloat(uint x) => *(float*)&x;
+    public static float asfloat(uint x) => global::System.BitConverter.UInt32BitsToSingle(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float2 asfloat(uint2 x) => *(float2*)&x;
+    public static float2 asfloat(uint2 x) => new(x.data.AsSingle());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float3 asfloat(uint3 x) => *(float3*)&x;
+    public static float3 asfloat(uint3 x) => new(x.data.AsSingle());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe float4 asfloat(uint4 x) => *(float4*)&x;
+    public static float4 asfloat(uint4 x) => new(x.data.AsSingle());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe double asdouble(long x) => *(double*)&x;
+    public static double asdouble(long x) => global::System.BitConverter.Int64BitsToDouble(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe double asdouble(ulong x) => *(double*)&x;
+    public static double asdouble(ulong x) => global::System.BitConverter.UInt64BitsToDouble(x);
 
     #endregion
 
@@ -285,6 +285,26 @@ public static partial class math
 
     #endregion
 
+    #region sign
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float sign(float x) => (x > 0.0f ? 1.0f : 0.0f) - (x < 0.0f ? 1.0f : 0.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double sign(double x) => x == 0.0 ? 0.0 : (x > 0.0 ? 1.0 : 0.0) - (x < 0.0 ? 1.0 : 0.0);
+
+    #endregion
+
+    #region fmod
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float fmod(float x, float y) => x % y;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double fmod(double x, double y) => x % y;
+
+    #endregion
+
     #region rounding
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -319,16 +339,6 @@ public static partial class math
 
     #endregion
 
-    #region sign
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float sign(float x) => (x > 0.0f ? 1.0f : 0.0f) - (x < 0.0f ? 1.0f : 0.0f);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double sign(double x) => x == 0.0 ? 0.0 : (x > 0.0 ? 1.0 : 0.0) - (x < 0.0 ? 1.0 : 0.0);
-
-    #endregion
-
     #region step / smoothstep
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -353,16 +363,6 @@ public static partial class math
 
     #endregion
 
-    #region fmod
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float fmod(float x, float y) => x % y;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double fmod(double x, double y) => x % y;
-
-    #endregion
-
     #region remap
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -370,6 +370,16 @@ public static partial class math
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double remap(double a, double b, double c, double d, double x) => lerp(c, d, unlerp(a, b, x));
+
+    #endregion
+
+    #region atan2
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float atan2(float y, float x) => (float)global::System.Math.Atan2(y, x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double atan2(double y, double x) => global::System.Math.Atan2(y, x);
 
     #endregion
 
@@ -401,53 +411,29 @@ public static partial class math
 
     #endregion
 
-    #region atan2
+    #region cross
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float atan2(float y, float x) => (float)global::System.Math.Atan2(y, x);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double atan2(double y, double x) => global::System.Math.Atan2(y, x);
-
-    #endregion
-
-    #region ceilpow2 / floorlog2 / ceillog2
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ceilpow2(int x)
+    public static float3 cross(float3 x, float3 y)
     {
-        x -= 1;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x + 1;
+        var xv = x.data;
+        var yv = y.data;
+        var shuf = Vector128.Create(1, 2, 0, 3);
+        var x1 = Vector128.Shuffle(xv, shuf);
+        var y1 = Vector128.Shuffle(yv, shuf);
+        return new float3(Vector128.Shuffle(xv * y1 - x1 * yv, shuf));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint ceilpow2(uint x)
+    public static double3 cross(double3 x, double3 y)
     {
-        x -= 1u;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x + 1u;
+        var xv = x.data;
+        var yv = y.data;
+        var shuf = Vector256.Create(1L, 2L, 0L, 3L);
+        var x1 = Vector256.Shuffle(xv, shuf);
+        var y1 = Vector256.Shuffle(yv, shuf);
+        return new double3(Vector256.Shuffle(xv * y1 - x1 * yv, shuf));
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ceillog2(int x) => 32 - lzcnt((uint)x - 1);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ceillog2(uint x) => 32 - lzcnt(x - 1u);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int floorlog2(int x) => 31 - lzcnt((uint)x);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int floorlog2(uint x) => 31 - lzcnt(x);
 
     #endregion
 
@@ -457,74 +443,37 @@ public static partial class math
     public static int countbits(int x) => countbits((uint)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int countbits(uint x)
-    {
-        x = x - ((x >> 1) & 0x55555555u);
-        x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
-        return (int)((((x + (x >> 4)) & 0x0F0F0F0Fu) * 0x01010101u) >> 24);
-    }
+    public static int countbits(uint x) => global::System.Numerics.BitOperations.PopCount(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int countbits(long x) => countbits((ulong)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int countbits(ulong x)
-    {
-        x = x - ((x >> 1) & 0x5555555555555555ul);
-        x = (x & 0x3333333333333333ul) + ((x >> 2) & 0x3333333333333333ul);
-        return (int)((((x + (x >> 4)) & 0x0F0F0F0F0F0F0F0Ful) * 0x0101010101010101ul) >> 56);
-    }
+    public static int countbits(ulong x) => global::System.Numerics.BitOperations.PopCount(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int lzcnt(int x) => lzcnt((uint)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int lzcnt(uint x)
-    {
-        if (x == 0u) return 32;
-        LongDoubleUnion u;
-        u.doubleValue = 0.0;
-        u.longValue = 0x4330000000000000L + x;
-        u.doubleValue -= 4503599627370496.0;
-        return 0x41E - (int)(u.longValue >> 52);
-    }
+    public static int lzcnt(uint x) => global::System.Numerics.BitOperations.LeadingZeroCount(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int lzcnt(long x) => lzcnt((ulong)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int lzcnt(ulong x)
-    {
-        if (x == 0ul) return 64;
-        var xh = (uint)(x >> 32);
-        return xh != 0u ? lzcnt(xh) : 32 + lzcnt((uint)x);
-    }
+    public static int lzcnt(ulong x) => global::System.Numerics.BitOperations.LeadingZeroCount(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int tzcnt(int x) => tzcnt((uint)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int tzcnt(uint x)
-    {
-        if (x == 0u) return 32;
-        x &= unchecked(0u - x);
-        LongDoubleUnion u;
-        u.doubleValue = 0.0;
-        u.longValue = 0x4330000000000000L + x;
-        u.doubleValue -= 4503599627370496.0;
-        return (int)(u.longValue >> 52) - 0x3FF;
-    }
+    public static int tzcnt(uint x) => global::System.Numerics.BitOperations.TrailingZeroCount(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int tzcnt(long x) => tzcnt((ulong)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int tzcnt(ulong x)
-    {
-        if (x == 0ul) return 64;
-        var xl = (uint)x;
-        return xl != 0u ? tzcnt(xl) : 32 + tzcnt((uint)(x >> 32));
-    }
+    public static int tzcnt(ulong x) => global::System.Numerics.BitOperations.TrailingZeroCount(x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int reversebits(int x) => (int)reversebits((uint)x);
@@ -555,29 +504,63 @@ public static partial class math
 
     #endregion
 
-    #region cross
+    #region ceilpow2 / floorlog2 / ceillog2
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 cross(float3 x, float3 y)
-    {
-        var xv = x.data;
-        var yv = y.data;
-        var shuf = Vector128.Create(1, 2, 0, 3);
-        var x1 = Vector128.Shuffle(xv, shuf);
-        var y1 = Vector128.Shuffle(yv, shuf);
-        return new float3(Vector128.Shuffle(xv * y1 - x1 * yv, shuf));
-    }
+    public static int ceilpow2(int x) => (int)global::System.Numerics.BitOperations.RoundUpToPowerOf2((uint)x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double3 cross(double3 x, double3 y)
-    {
-        var xv = x.data;
-        var yv = y.data;
-        var shuf = Vector256.Create(1L, 2L, 0L, 3L);
-        var x1 = Vector256.Shuffle(xv, shuf);
-        var y1 = Vector256.Shuffle(yv, shuf);
-        return new double3(Vector256.Shuffle(xv * y1 - x1 * yv, shuf));
-    }
+    public static uint ceilpow2(uint x) => global::System.Numerics.BitOperations.RoundUpToPowerOf2(x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ceillog2(int x) => 32 - lzcnt((uint)x - 1);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ceillog2(uint x) => 32 - lzcnt(x - 1u);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int floorlog2(int x) => 31 - lzcnt((uint)x);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int floorlog2(uint x) => 31 - lzcnt(x);
+
+    #endregion
+
+    #region rol / ror
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long rol(long x, int n) => (long)rol((ulong)x, n);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong rol(ulong x, int n) => (x << n) | (x >> (64 - n));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long ror(long x, int n) => (long)ror((ulong)x, n);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong ror(ulong x, int n) => (x >> n) | (x << (64 - n));
+
+    #endregion
+
+    #region direction constants
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 up() => new(0.0f, 1.0f, 0.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 down() => new(0.0f, -1.0f, 0.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 forward() => new(0.0f, 0.0f, 1.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 back() => new(0.0f, 0.0f, -1.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 left() => new(-1.0f, 0.0f, 0.0f);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 right() => new(1.0f, 0.0f, 0.0f);
 
     #endregion
 
@@ -689,6 +672,85 @@ public static partial class math
 
     #endregion
 
+    #region compress
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe int compress(int* output, int index, int4 val, bool4 mask)
+    {
+        if (mask.x) output[index++] = val.x;
+        if (mask.y) output[index++] = val.y;
+        if (mask.z) output[index++] = val.z;
+        if (mask.w) output[index++] = val.w;
+        return index;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe int compress(uint* output, int index, uint4 val, bool4 mask) =>
+        compress((int*)output, index, *(int4*)&val, mask);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe int compress(float* output, int index, float4 val, bool4 mask) =>
+        compress((int*)output, index, *(int4*)&val, mask);
+
+    #endregion
+
+    #region buffer hash
+
+    public static unsafe uint hash(void* pBuffer, int numBytes, uint seed = 0)
+    {
+        unchecked
+        {
+            const uint prime1 = 2654435761;
+            const uint prime2 = 2246822519;
+            const uint prime3 = 3266489917;
+            const uint prime4 = 668265263;
+            const uint prime5 = 374761393;
+
+            var p = (uint4*)pBuffer;
+            var hash = seed + prime5;
+            if (numBytes >= 16)
+            {
+                var state = new uint4(prime1 + prime2, prime2, 0, (uint)-prime1) + seed;
+
+                var count = numBytes >> 4;
+                for (var i = 0; i < count; ++i)
+                {
+                    state += *p++ * prime2;
+                    state = (state << 13) | (state >> 19);
+                    state *= prime1;
+                }
+
+                hash = rol(state.x, 1) + rol(state.y, 7) + rol(state.z, 12) + rol(state.w, 18);
+            }
+
+            hash += (uint)numBytes;
+
+            var puint = (uint*)p;
+            for (var i = 0; i < ((numBytes >> 2) & 3); ++i)
+            {
+                hash += *puint++ * prime3;
+                hash = rol(hash, 17) * prime4;
+            }
+
+            var pbyte = (byte*)puint;
+            for (var i = 0; i < (numBytes & 3); ++i)
+            {
+                hash += *pbyte++ * prime5;
+                hash = rol(hash, 11) * prime1;
+            }
+
+            hash ^= hash >> 15;
+            hash *= prime2;
+            hash ^= hash >> 13;
+            hash *= prime3;
+            hash ^= hash >> 16;
+
+            return hash;
+        }
+    }
+
+    #endregion
+
     // Internal
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -696,7 +758,7 @@ public static partial class math
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static double4 movelh(double4 a, double4 b) => shuffle(a, b, ShuffleComponent.LeftX, ShuffleComponent.LeftY, ShuffleComponent.RightX, ShuffleComponent.RightY);
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static float4 movehl(float4 a, float4 b) => shuffle(b, a, ShuffleComponent.LeftZ, ShuffleComponent.LeftW, ShuffleComponent.RightZ, ShuffleComponent.RightW);
 

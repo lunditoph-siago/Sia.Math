@@ -20,12 +20,12 @@ public record struct AffineTransform(float3 Translation, float3x3 RotationScale)
         : this(translation, new float3x3(rotation)) =>
         RotationScale = new(RotationScale.c0 * scale.x, RotationScale.c1 * scale.y, RotationScale.c2 * scale.z);
 
-    public AffineTransform(float3x3 RotationScale) : this(float3.zero, RotationScale) { }
+    public AffineTransform(in float3x3 RotationScale) : this(float3.zero, RotationScale) { }
 
-    public AffineTransform(RigidTransform rigid) : this(rigid.Translation, rigid.Rotation) { }
+    public AffineTransform(in RigidTransform rigid) : this(rigid.Translation, rigid.Rotation) { }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator float4x4(AffineTransform m) =>
+    public static implicit operator float4x4(in AffineTransform m) =>
         new(new float4(m.RotationScale.c0, 0f), new float4(m.RotationScale.c1, 0f),
             new float4(m.RotationScale.c2, 0f), new float4(m.Translation, 1f));
 
@@ -50,21 +50,21 @@ public record struct AffineTransform(float3 Translation, float3x3 RotationScale)
 public static partial class math
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AffineTransform mul(float3x3 a, AffineTransform b) =>
+    public static AffineTransform mul(in float3x3 a, in AffineTransform b) =>
         new(mul(b.Translation, a), mul(b.RotationScale, a));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AffineTransform mul(AffineTransform a, float3x3 b) =>
+    public static AffineTransform mul(in AffineTransform a, in float3x3 b) =>
         new(a.Translation, mul(a.RotationScale, b));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint hash(AffineTransform v)
+    public static uint hash(in AffineTransform v)
     {
         return hash(v.RotationScale) + 0xC5C5394Bu * hash(v.Translation);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint4 hashwide(AffineTransform v)
+    public static uint4 hashwide(in AffineTransform v)
     {
         return hashwide(v.RotationScale).xyzz + 0xC5C5394Bu * hashwide(v.Translation).xyzz;
     }

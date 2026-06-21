@@ -37,7 +37,7 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
 
     /// <summary>Constructs a unit <see cref="quaternion" /> from a <see cref="float3x3" /> rotation matrix. The matrix must be orthonormal.</summary>
     /// <param name="m">The <see cref="float3x3" /> orthonormal rotation matrix.</param>
-    public quaternion(float3x3 m)
+    public quaternion(in float3x3 m)
     {
         var u = m.c0;
         var v = m.c1;
@@ -63,7 +63,7 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
 
     /// <summary>Constructs a unit quaternion from an orthonormal <see cref="float4x4" /> matrix.</summary>
     /// <param name="m">The <see cref="float4x4" /> orthonormal rotation matrix.</param>
-    public quaternion(float4x4 m)
+    public quaternion(in float4x4 m)
     {
         var u = m.c0;
         var v = m.c1;
@@ -305,6 +305,46 @@ public static partial class math
     public static quaternion quaternion(float4x4 m) => new(m);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static quaternion rotation(in float3x3 m)
+    {
+        var det = determinant(m);
+        if (abs(1f - det) < svd.k_EpsilonDeterminant)
+            return quaternion(m);
+
+        if (abs(det) > svd.k_EpsilonDeterminant)
+        {
+            var tmp = mulScale(m, rsqrt(float3(lengthsq(m.c0), lengthsq(m.c1), lengthsq(m.c2))));
+            if (abs(1f - determinant(tmp)) < svd.k_EpsilonDeterminant)
+                return quaternion(tmp);
+        }
+
+        return svd.svdRotation(m);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static quaternion mul(quaternion a, quaternion b)
+    {
+        return quaternion(a.value.wwww * b.value + (a.value.xyzx * b.value.wwwx + a.value.yzxy * b.value.zxyy) * float4(1.0f, 1.0f, 1.0f, -1.0f) - a.value.zxyz * b.value.yzxz);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 mul(quaternion q, float3 v)
+    {
+        var t = 2 * cross(q.value.xyz, v);
+        return v + q.value.w * t + cross(q.value.xyz, t);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 rotate(quaternion q, float3 v)
+    {
+        var t = 2 * cross(q.value.xyz, v);
+        return v + q.value.w * t + cross(q.value.xyz, t);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 forward(quaternion q) => mul(q, float3(0, 0, 1));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion conjugate(quaternion q)
     {
         return quaternion(q.value * float4(-1.0f, -1.0f, -1.0f, 1.0f));
@@ -401,23 +441,10 @@ public static partial class math
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static quaternion mul(quaternion a, quaternion b)
+    public static float angle(quaternion q1, quaternion q2)
     {
-        return quaternion(a.value.wwww * b.value + (a.value.xyzx * b.value.wwwx + a.value.yzxy * b.value.zxyy) * float4(1.0f, 1.0f, 1.0f, -1.0f) - a.value.zxyz * b.value.yzxz);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 mul(quaternion q, float3 v)
-    {
-        var t = 2 * cross(q.value.xyz, v);
-        return v + q.value.w * t + cross(q.value.xyz, t);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 rotate(quaternion q, float3 v)
-    {
-        var t = 2 * cross(q.value.xyz, v);
-        return v + q.value.w * t + cross(q.value.xyz, t);
+        var diff = asin(length(normalize(mul(conjugate(q1), q2)).value.xyz));
+        return diff + diff;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -462,5 +489,27 @@ public static partial class math
     public static uint4 hashwide(quaternion q)
     {
         return hashwide(q.value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float3x3 adj(in float3x3 m, out float det)
+    {
+        float3x3 adjT;
+        adjT.c0 = cross(m.c1, m.c2);
+        adjT.c1 = cross(m.c2, m.c0);
+        adjT.c2 = cross(m.c0, m.c1);
+        det = dot(m.c0, adjT.c0);
+
+        return transpose(adjT);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool adjInverse(in float3x3 m, out float3x3 i, float epsilon = svd.k_EpsilonNormal)
+    {
+        i = adj(m, out var det);
+        var c = abs(det) > epsilon;
+        float3 detInv = select(float3(1f), rcp(det), c);
+        i = scaleMul(detInv, i);
+        return c;
     }
 }

@@ -11,10 +11,10 @@ public record struct RigidTransform(quaternion Rotation, float3 Translation)
      public static readonly RigidTransform Identity = new(quaternion.identity, float3.zero);
 
      [MethodImpl(MethodImplOptions.AggressiveInlining)]
-     public RigidTransform(float3x3 rotation, float3 translation) : this(new quaternion(rotation), translation) { }
+     public RigidTransform(in float3x3 rotation, float3 translation) : this(new quaternion(rotation), translation) { }
 
      [MethodImpl(MethodImplOptions.AggressiveInlining)]
-     public RigidTransform(float4x4 transform) : this(new quaternion(transform), transform.c3.xyz) { }
+     public RigidTransform(in float4x4 transform) : this(new quaternion(transform), transform.c3.xyz) { }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static RigidTransform AxisAngle(float3 axis, float angle) => new(quaternion.AxisAngle(axis, angle), float3.zero);
@@ -38,6 +38,24 @@ public record struct RigidTransform(quaternion Rotation, float3 Translation)
     public static RigidTransform EulerZYX(float3 xyz) => new(quaternion.EulerZYX(xyz), float3.zero);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform EulerXYZ(float x, float y, float z) => EulerXYZ(new float3(x, y, z));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform EulerXZY(float x, float y, float z) => EulerXZY(new float3(x, y, z));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform EulerYXZ(float x, float y, float z) => EulerYXZ(new float3(x, y, z));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform EulerYZX(float x, float y, float z) => EulerYZX(new float3(x, y, z));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform EulerZXY(float x, float y, float z) => EulerZXY(new float3(x, y, z));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform EulerZYX(float x, float y, float z) => EulerZYX(new float3(x, y, z));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static RigidTransform Euler(float3 xyz, math.RotationOrder order = math.RotationOrder.ZXY) => order switch
     {
         math.RotationOrder.XYZ => EulerXYZ(xyz),
@@ -48,6 +66,12 @@ public record struct RigidTransform(quaternion Rotation, float3 Translation)
         math.RotationOrder.ZYX => EulerZYX(xyz),
         _ => Identity
     };
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform Euler(float x, float y, float z, math.RotationOrder order = math.RotationOrder.Default) => Euler(new float3(x, y, z), order);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform RotateX(float angle) => new(quaternion.RotateX(angle), float3.zero);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static RigidTransform RotateY(float angle) => new(quaternion.RotateY(angle), float3.zero);
@@ -81,7 +105,16 @@ public record struct RigidTransform(quaternion Rotation, float3 Translation)
 public static partial class math
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static RigidTransform inverse(RigidTransform t)
+    public static RigidTransform RigidTransform(quaternion rotation, float3 translation) => new(rotation, translation);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform RigidTransform(in float3x3 rotation, float3 translation) => new(rotation, translation);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform RigidTransform(in float4x4 transform) => new(transform);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static RigidTransform inverse(in RigidTransform t)
     {
         var invRotation = inverse(t.Rotation);
         var invTranslation = mul(invRotation, -t.Translation);
@@ -89,37 +122,37 @@ public static partial class math
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static RigidTransform mul(RigidTransform a, RigidTransform b)
+    public static RigidTransform mul(in RigidTransform a, in RigidTransform b)
     {
         return new RigidTransform(mul(a.Rotation, b.Rotation), mul(a.Rotation, b.Translation) + a.Translation);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float4 mul(RigidTransform a, float4 pos)
+    public static float4 mul(in RigidTransform a, float4 pos)
     {
         return float4(mul(a.Rotation, pos.xyz) + a.Translation * pos.w, pos.w);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 rotate(RigidTransform a, float3 dir)
+    public static float3 rotate(in RigidTransform a, float3 dir)
     {
         return mul(a.Rotation, dir);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 transform(RigidTransform a, float3 pos)
+    public static float3 transform(in RigidTransform a, float3 pos)
     {
         return mul(a.Rotation, pos) + a.Translation;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint hash(RigidTransform v)
+    public static uint hash(in RigidTransform v)
     {
         return hash(v.Rotation) + 0xC5C5394Bu * hash(v.Translation);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint4 hashwide(RigidTransform v)
+    public static uint4 hashwide(in RigidTransform v)
     {
         return hashwide(v.Rotation) + 0xC5C5394Bu * hashwide(v.Translation).xyzz;
     }

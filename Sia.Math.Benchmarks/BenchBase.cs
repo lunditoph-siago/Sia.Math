@@ -31,8 +31,14 @@ public abstract class BenchBase
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected float NextF() => _pool[_cursor = (_cursor + 1) % PoolSize];
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected double NextD() => _pool[_cursor = (_cursor + 1) % PoolSize];
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     protected void Sink(float x) => Sunk = x;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    protected void Sink(double x) => Sunk = (float)x;
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     protected void Sink(bool x) => Sunk = x ? 1f : 0f;

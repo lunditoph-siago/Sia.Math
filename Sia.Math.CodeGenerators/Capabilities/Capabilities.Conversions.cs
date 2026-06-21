@@ -50,6 +50,7 @@ public static class Conversions
         StringBuilder typeBody, StringBuilder mathBody)
     {
         var srcName = isScalar ? srcType.ToBaseTypeName() : srcType.ToTypeName(shape.Rows, shape.Columns);
+        var paramType = !isScalar && shape.IsMatrix ? $"in {srcName}" : srcName;
         var typeCategory = shape.IsMatrix ? "matrix" : "vector";
         var fieldCount = shape.IsMatrix ? shape.Columns : shape.Rows;
         var fields = shape.IsMatrix ? TypeShape.MatrixFields : TypeShape.VectorFields;
@@ -68,7 +69,7 @@ public static class Conversions
         }
         typeBody.AppendLine($"        /// <param name=\"v\">The <see cref=\"{srcName}\" /> to convert.</param>");
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
-        typeBody.AppendLine($"        public {shape.TypeName}({srcName} v)");
+        typeBody.AppendLine($"        public {shape.TypeName}({paramType} v)");
         typeBody.AppendLine("        {");
 
         if (!isScalar && !shape.IsMatrix && srcType != BaseType.Bool && shape.BaseType != BaseType.Bool && srcType != shape.BaseType)
@@ -116,10 +117,10 @@ public static class Conversions
         typeBody.AppendLine("        }");
 
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
-        typeBody.AppendLine($"        public static {(isExplicit ? "explicit" : "implicit")} operator {shape.TypeName}({srcName} v) => new {shape.TypeName}(v);");
+        typeBody.AppendLine($"        public static {(isExplicit ? "explicit" : "implicit")} operator {shape.TypeName}({paramType} v) => new {shape.TypeName}(v);");
 
         mathBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
-        mathBody.AppendLine($"        public static {shape.TypeName} {shape.TypeName}({srcName} v) => new {shape.TypeName}(v);");
+        mathBody.AppendLine($"        public static {shape.TypeName} {shape.TypeName}({paramType} v) => new {shape.TypeName}(v);");
     }
 
     private static string[] BuildVectorConversionBody(BaseType dstType, BaseType srcType, int rows)

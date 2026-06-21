@@ -131,8 +131,11 @@ public sealed class MathSourceGenerator : ISourceGenerator
 
                 var rowMajor = rhsSquare && (n == 1 || lhsSquare);
 
+                var lhsParam = lhsIsMatrix ? $"in {lhsType}" : lhsType;
+                var rhsParam = rhsIsMatrix ? $"in {rhsType}" : rhsType;
+
                 w.WriteLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
-                w.WriteLine($"public static {resultType} mul({lhsType} a, {rhsType} b)");
+                w.WriteLine($"public static {resultType} mul({lhsParam} a, {rhsParam} b)");
                 w.WriteLine("{");
 
                 if (lhsSquare && k == 1 && m > 1)

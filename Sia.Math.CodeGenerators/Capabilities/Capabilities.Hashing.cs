@@ -76,9 +76,11 @@ public static class Hashing
         var fnName = wide ? "hashwide" : "hash";
         var cat = shape.IsMatrix ? "matrix" : "vector";
 
+        var paramType = shape.IsMatrix ? $"in {shape.TypeName}" : shape.TypeName;
+
         body.AppendLine($"        /// <summary>Returns a {retType} hash of a {shape.TypeName} {cat}.</summary>");
         body.AppendLine("        [MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
-        body.AppendLine($"        public static {retType} {fnName}({shape.TypeName} v)");
+        body.AppendLine($"        public static {retType} {fnName}({paramType} v)");
         body.AppendLine("        {");
 
         if (shape.BaseType == BaseType.Bool)

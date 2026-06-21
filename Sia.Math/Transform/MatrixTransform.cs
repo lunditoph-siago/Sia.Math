@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 #pragma warning disable 8981
 
 namespace Sia.Math;
@@ -22,18 +24,21 @@ public static partial class math
     // or composing two of them uses the row-vector convention (mul(v, M) = v*M), not mul(M, v) -
     // matching System.Numerics (Vector4.Transform(v, M) = v*M, no M*v overload).
 
-    public static MatrixTransform inverse(MatrixTransform a)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static MatrixTransform inverse(in MatrixTransform a)
     {
         var inverseRotation = transpose(a.Rotation);
         return new MatrixTransform(mul(-a.Translation, inverseRotation), inverseRotation);
     }
 
-    public static float3 mul(MatrixTransform a, float3 x)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float3 mul(in MatrixTransform a, float3 x)
     {
         return mul(x, a.Rotation) + a.Translation;
     }
 
-    public static MatrixTransform mul(MatrixTransform cFromB, MatrixTransform bFromA)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static MatrixTransform mul(in MatrixTransform cFromB, in MatrixTransform bFromA)
     {
         return new MatrixTransform(
             mul(bFromA.Translation, cFromB.Rotation) + cFromB.Translation,
