@@ -140,9 +140,10 @@ public sealed class MathSourceGenerator : ISourceGenerator
 
                 if (lhsSquare && k == 1 && m > 1)
                 {
-                    var dotTerms = string.Join(", ", Enumerable.Range(0, n)
-                        .Select(i => $"dot(a.{TypeShape.MatrixFields[i]}, b)"));
-                    w.WriteLine($"    return new {resultType}({dotTerms});");
+                    var terms = Enumerable.Range(0, m)
+                        .Select(j => $"t.{TypeShape.MatrixFields[j]} * b.{TypeShape.Components[j]}");
+                    w.WriteLine("    var t = transpose(a);");
+                    w.WriteLine($"    return {string.Join(" + ", terms)};");
                 }
                 else
                 {

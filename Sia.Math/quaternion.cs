@@ -37,6 +37,7 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
 
     /// <summary>Constructs a unit <see cref="quaternion" /> from a <see cref="float3x3" /> rotation matrix. The matrix must be orthonormal.</summary>
     /// <param name="m">The <see cref="float3x3" /> orthonormal rotation matrix.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public quaternion(in float3x3 m)
     {
         var u = m.c0;
@@ -54,15 +55,16 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
                          (u_mask & uint4(0x00000000, 0x80000000, 0x00000000, 0x80000000)) ^
                          (t_mask & uint4(0x80000000, 0x80000000, 0x80000000, 0x00000000));
 
-        value = float4(tr, u.y, w.x, v.z) + asfloat(asuint(float4(t, v.x, u.z, w.y)) ^ sign_flips);   // +---, +++-, ++-+, +-++
+        var result = float4(tr, u.y, w.x, v.z) + asfloat(asuint(float4(t, v.x, u.z, w.y)) ^ sign_flips);   // +---, +++-, ++-+, +-++
 
-        value = asfloat((asuint(value) & ~u_mask) | (asuint(value.zwxy) & u_mask));
-        value = asfloat((asuint(value.wzyx) & ~t_mask) | (asuint(value) & t_mask));
-        value = normalize(value);
+        result = asfloat((asuint(result) & ~u_mask) | (asuint(result.zwxy) & u_mask));
+        result = asfloat((asuint(result.wzyx) & ~t_mask) | (asuint(result) & t_mask));
+        value = normalize(result);
     }
 
     /// <summary>Constructs a unit quaternion from an orthonormal <see cref="float4x4" /> matrix.</summary>
     /// <param name="m">The <see cref="float4x4" /> orthonormal rotation matrix.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public quaternion(in float4x4 m)
     {
         var u = m.c0;
@@ -80,11 +82,11 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
                          (u_mask & uint4(0x00000000, 0x80000000, 0x00000000, 0x80000000)) ^
                          (t_mask & uint4(0x80000000, 0x80000000, 0x80000000, 0x00000000));
 
-        value = float4(tr, u.y, w.x, v.z) + asfloat(asuint(float4(t, v.x, u.z, w.y)) ^ sign_flips);   // +---, +++-, ++-+, +-++
+        var result = float4(tr, u.y, w.x, v.z) + asfloat(asuint(float4(t, v.x, u.z, w.y)) ^ sign_flips);   // +---, +++-, ++-+, +-++
 
-        value = asfloat((asuint(value) & ~u_mask) | (asuint(value.zwxy) & u_mask));
-        value = asfloat((asuint(value.wzyx) & ~t_mask) | (asuint(value) & t_mask));
-        value = normalize(value);
+        result = asfloat((asuint(result) & ~u_mask) | (asuint(result.zwxy) & u_mask));
+        result = asfloat((asuint(result.wzyx) & ~t_mask) | (asuint(result) & t_mask));
+        value = normalize(result);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

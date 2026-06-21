@@ -5,6 +5,7 @@ namespace Sia.Math.Benchmarks;
 
 #region PopCount
 
+[BenchmarkCategory("LowPriority")]
 public class UIntPopCount : BenchBase
 {
     private uint _sa;
@@ -18,6 +19,7 @@ public class UIntPopCount : BenchBase
     public void Sia_PopCount() => Sink(math.countbits(_sa));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt2PopCount : BenchBase
 {
     private uint2 _sa;
@@ -31,6 +33,7 @@ public class UInt2PopCount : BenchBase
     public void Sia_PopCount() { var r = math.countbits(_sa); Sink(r.x + r.y); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt3PopCount : BenchBase
 {
     private uint3 _sa;
@@ -44,6 +47,7 @@ public class UInt3PopCount : BenchBase
     public void Sia_PopCount() { var r = math.countbits(_sa); Sink(r.x + r.y + r.z); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt4PopCount : BenchBase
 {
     private uint4 _sa;
@@ -61,6 +65,7 @@ public class UInt4PopCount : BenchBase
 
 #region LeadingZeroCount
 
+[BenchmarkCategory("LowPriority")]
 public class UIntLeadingZeroCount : BenchBase
 {
     private uint _sa;
@@ -74,6 +79,7 @@ public class UIntLeadingZeroCount : BenchBase
     public void Sia_LeadingZeroCount() => Sink(math.lzcnt(_sa));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt2LeadingZeroCount : BenchBase
 {
     private uint2 _sa;
@@ -87,6 +93,7 @@ public class UInt2LeadingZeroCount : BenchBase
     public void Sia_LeadingZeroCount() { var r = math.lzcnt(_sa); Sink(r.x + r.y); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt3LeadingZeroCount : BenchBase
 {
     private uint3 _sa;
@@ -100,6 +107,7 @@ public class UInt3LeadingZeroCount : BenchBase
     public void Sia_LeadingZeroCount() { var r = math.lzcnt(_sa); Sink(r.x + r.y + r.z); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt4LeadingZeroCount : BenchBase
 {
     private uint4 _sa;
@@ -117,6 +125,7 @@ public class UInt4LeadingZeroCount : BenchBase
 
 #region TrailingZeroCount
 
+[BenchmarkCategory("LowPriority")]
 public class UIntTrailingZeroCount : BenchBase
 {
     private uint _sa;
@@ -130,6 +139,7 @@ public class UIntTrailingZeroCount : BenchBase
     public void Sia_TrailingZeroCount() => Sink(math.tzcnt(_sa));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt2TrailingZeroCount : BenchBase
 {
     private uint2 _sa;
@@ -143,6 +153,7 @@ public class UInt2TrailingZeroCount : BenchBase
     public void Sia_TrailingZeroCount() { var r = math.tzcnt(_sa); Sink(r.x + r.y); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt3TrailingZeroCount : BenchBase
 {
     private uint3 _sa;
@@ -156,6 +167,7 @@ public class UInt3TrailingZeroCount : BenchBase
     public void Sia_TrailingZeroCount() { var r = math.tzcnt(_sa); Sink(r.x + r.y + r.z); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt4TrailingZeroCount : BenchBase
 {
     private uint4 _sa;
@@ -173,6 +185,7 @@ public class UInt4TrailingZeroCount : BenchBase
 
 #region Log2
 
+[BenchmarkCategory("LowPriority")]
 public class UIntLog2 : BenchBase
 {
     private uint _sa;
@@ -186,6 +199,7 @@ public class UIntLog2 : BenchBase
     public void Sia_Log2() => Sink(math.floorlog2(_sa));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt2Log2 : BenchBase
 {
     private uint2 _sa;
@@ -199,6 +213,7 @@ public class UInt2Log2 : BenchBase
     public void Sia_Log2() { var r = math.floorlog2(_sa); Sink(r.x + r.y); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt3Log2 : BenchBase
 {
     private uint3 _sa;
@@ -212,6 +227,7 @@ public class UInt3Log2 : BenchBase
     public void Sia_Log2() { var r = math.floorlog2(_sa); Sink(r.x + r.y + r.z); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt4Log2 : BenchBase
 {
     private uint4 _sa;
@@ -229,6 +245,7 @@ public class UInt4Log2 : BenchBase
 
 #region RoundUpToPowerOf2
 
+[BenchmarkCategory("LowPriority")]
 public class UIntRoundUpToPowerOf2 : BenchBase
 {
     private uint _sa;
@@ -242,6 +259,7 @@ public class UIntRoundUpToPowerOf2 : BenchBase
     public void Sia_RoundUpToPowerOf2() => Sink(math.ceilpow2(_sa));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt2RoundUpToPowerOf2 : BenchBase
 {
     private uint2 _sa;
@@ -255,6 +273,7 @@ public class UInt2RoundUpToPowerOf2 : BenchBase
     public void Sia_RoundUpToPowerOf2() { var r = math.ceilpow2(_sa); Sink(r.x + r.y); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt3RoundUpToPowerOf2 : BenchBase
 {
     private uint3 _sa;
@@ -268,6 +287,7 @@ public class UInt3RoundUpToPowerOf2 : BenchBase
     public void Sia_RoundUpToPowerOf2() { var r = math.ceilpow2(_sa); Sink(r.x + r.y + r.z); }
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt4RoundUpToPowerOf2 : BenchBase
 {
     private uint4 _sa;
@@ -285,6 +305,7 @@ public class UInt4RoundUpToPowerOf2 : BenchBase
 
 #region IsPow2
 
+[BenchmarkCategory("LowPriority")]
 public class UIntIsPow2 : BenchBase
 {
     private uint _sa;
@@ -298,6 +319,7 @@ public class UIntIsPow2 : BenchBase
     public void Sia_IsPow2() => Sink(math.ispow2(_sa));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt2IsPow2 : BenchBase
 {
     private uint2 _sa;
@@ -311,6 +333,7 @@ public class UInt2IsPow2 : BenchBase
     public void Sia_IsPow2() => Sink(math.any(math.ispow2(_sa)));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt3IsPow2 : BenchBase
 {
     private uint3 _sa;
@@ -324,6 +347,7 @@ public class UInt3IsPow2 : BenchBase
     public void Sia_IsPow2() => Sink(math.any(math.ispow2(_sa)));
 }
 
+[BenchmarkCategory("LowPriority")]
 public class UInt4IsPow2 : BenchBase
 {
     private uint4 _sa;

@@ -2,6 +2,19 @@ name: Benchmark
 
 on:
   workflow_dispatch:
+    inputs:
+      include_high_priority:
+        description: Include HighPriority benchmarks
+        type: boolean
+        default: true
+      include_normal:
+        description: Include Normal-priority benchmarks
+        type: boolean
+        default: true
+      include_low_priority:
+        description: Include LowPriority benchmarks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,9 +35,17 @@ jobs:
         run: dotnet restore Sia.Math.Benchmarks/Sia.Math.Benchmarks.csproj
 
       - name: Run benchmarks
-        run: >
-          dotnet run --project Sia.Math.Benchmarks/Sia.Math.Benchmarks.csproj --configuration Release --
-          --filter "*" --job short --artifacts "${{ runner.temp }}/bench-results"
+        run: |
+          exclude=()
+          [ "${{ inputs.include_high_priority }}" = "false" ] && exclude+=(HighPriority)
+          [ "${{ inputs.include_normal }}" = "false" ] && exclude+=(Normal)
+          [ "${{ inputs.include_low_priority }}" = "false" ] && exclude+=(LowPriority)
+
+          args=()
+          [ ${#exclude[@]} -gt 0 ] && args+=(--excludeCategories "${exclude[@]}")
+
+          dotnet run --project Sia.Math.Benchmarks/Sia.Math.Benchmarks.csproj --configuration Release -- \
+            --filter "*" --job short --artifacts "${{ runner.temp }}/bench-results" "${args[@]}"
 
       - name: Summarize benchmark results
         if: always()

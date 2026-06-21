@@ -25,6 +25,29 @@ public static class MatrixOps
     {
         var resultType = shape.BaseType.ToTypeName(shape.Columns, shape.Rows);
         var colType = shape.BaseType.ToTypeName(shape.Columns, 1);
+
+        body.AppendLine("        [MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        body.AppendLine($"        public static {resultType} transpose(in {shape.TypeName} v)");
+        body.AppendLine("        {");
+
+        if (shape.BaseType == BaseType.Float && shape.IsSquareMatrix && shape.Rows is 3 or 4)
+        {
+            EmitSseTranspose(shape, resultType, colType, body);
+            body.AppendLine("            else");
+            body.AppendLine("            {");
+            EmitScalarGatherTranspose(shape, resultType, colType, body, "                ");
+            body.AppendLine("            }");
+        }
+        else
+        {
+            EmitScalarGatherTranspose(shape, resultType, colType, body, "            ");
+        }
+
+        body.AppendLine("        }");
+    }
+
+    private static void EmitScalarGatherTranspose(TypeShape shape, string resultType, string colType, StringBuilder body, string indent)
+    {
         var exprs = Enumerable.Range(0, shape.Rows).Select(row =>
         {
             var comps = Enumerable.Range(0, shape.Columns)
@@ -32,14 +55,37 @@ public static class MatrixOps
             return $"new {colType}({string.Join(", ", comps)})";
         }).ToList();
 
-        body.AppendLine("        [MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
-        body.AppendLine($"        public static {resultType} transpose(in {shape.TypeName} v)");
-        body.AppendLine("        {");
-        body.AppendLine($"            return new {resultType}(");
+        body.AppendLine($"{indent}return new {resultType}(");
         for (var i = 0; i < exprs.Count; i++)
-            body.AppendLine($"                {exprs[i]}{(i < exprs.Count - 1 ? "," : "")}");
-        body.AppendLine("            );");
-        body.AppendLine("        }");
+            body.AppendLine($"{indent}    {exprs[i]}{(i < exprs.Count - 1 ? "," : "")}");
+        body.AppendLine($"{indent});");
+    }
+
+    private static void EmitSseTranspose(TypeShape shape, string resultType, string colType, StringBuilder body)
+    {
+        const string sse = "global::System.Runtime.Intrinsics.X86.Sse";
+        var n = shape.Rows;
+        var fields = TypeShape.MatrixFields;
+
+        body.AppendLine($"            if ({sse}.IsSupported)");
+        body.AppendLine("            {");
+        for (var i = 0; i < n; i++)
+            body.AppendLine($"                var r{i} = v.{fields[i]}.data;");
+        if (n == 3)
+            body.AppendLine("                var r3 = global::System.Runtime.Intrinsics.Vector128<float>.Zero;");
+
+        body.AppendLine($"                var t0 = {sse}.Shuffle(r0, r1, 0x44);");
+        body.AppendLine($"                var t2 = {sse}.Shuffle(r0, r1, 0xEE);");
+        body.AppendLine($"                var t1 = {sse}.Shuffle(r2, r3, 0x44);");
+        body.AppendLine($"                var t3 = {sse}.Shuffle(r2, r3, 0xEE);");
+        body.AppendLine($"                return new {resultType}(");
+        body.AppendLine($"                    new {colType}({sse}.Shuffle(t0, t1, 0x88)),");
+        body.AppendLine($"                    new {colType}({sse}.Shuffle(t0, t1, 0xDD)),");
+        body.AppendLine($"                    new {colType}({sse}.Shuffle(t2, t3, 0x88)){(n == 4 ? "," : string.Empty)}");
+        if (n == 4)
+            body.AppendLine($"                    new {colType}({sse}.Shuffle(t2, t3, 0xDD))");
+        body.AppendLine("                );");
+        body.AppendLine("            }");
     }
 
     private static void EmitInverse(TypeShape shape, StringBuilder body)
