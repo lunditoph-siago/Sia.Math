@@ -1,14 +1,18 @@
 using System.Runtime.CompilerServices;
+#if !BROWSER
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
+#endif
 
 namespace Sia.Math.Benchmarks;
 
+#if !BROWSER
 [MemoryDiagnoser(false)]
 [DisassemblyDiagnoser]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
 [CategoriesColumn]
+#endif
 public abstract class BenchBase
 {
     private const int PoolSize = 1024;
@@ -17,7 +21,9 @@ public abstract class BenchBase
     private int _cursor;
     protected float Sunk;
 
+#if !BROWSER
     [GlobalSetup]
+#endif
     public void Setup()
     {
         _pool = new float[PoolSize * 8];

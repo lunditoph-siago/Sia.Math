@@ -1,0 +1,260 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    color-scheme: light dark;
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --bg: light-dark(#f9f9f9, #121212);
+    --surface: light-dark(#fff, #1c1c1e);
+    --surface-hover: light-dark(#f0f0f0, #2c2c2e);
+    --text: light-dark(#1a1a1a, #e8e8ea);
+    --text-secondary: light-dark(#6e6e73, #8e8e93);
+    --text-muted: light-dark(#999, #666);
+    --border: light-dark(#d1d1d6, #333335);
+    --border-light: light-dark(#e5e5ea, #2a2a2c);
+    --accent: light-dark(#007aff, #0a84ff);
+    --win: light-dark(#34c759, #30d158);
+    --loss: light-dark(#ff3b30, #ff453a);
+    --draw: light-dark(#8e8e93, #8e8e93);
+    --shadow: light-dark(0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
+body {
+    font: 1rem/1.5 var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+}
+
+#app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+
+    header {
+        margin-bottom: 2rem;
+        padding-bottom: .75rem;
+        border-bottom: 1px solid var(--border-light);
+
+        h1 {
+            font-size: 1.35rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+    }
+
+    #toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .75rem 1.25rem;
+        margin-bottom: 2rem;
+        padding: .75rem 1rem;
+        background: var(--surface);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+
+        #run-btn {
+            font: inherit;
+            font-size: .85rem;
+            padding: .4rem 1.1rem;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
+
+            &:hover {
+                background: var(--surface-hover);
+                border-color: var(--accent);
+            }
+            &:disabled {
+                opacity: .4;
+                cursor: not-allowed;
+                border-color: var(--border);
+            }
+        }
+
+        #status {
+            font-size: .8rem;
+            color: var(--text-secondary);
+            min-width: 4rem;
+        }
+
+        .meter {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            flex: 1 1 200px;
+            min-width: 120px;
+
+            .bar {
+                flex: 1;
+                height: 4px;
+                background: var(--border-light);
+                border-radius: 4px;
+                overflow: hidden;
+
+                #progress-fill {
+                    height: 100%;
+                    width: 0%;
+                    background: var(--accent);
+                    border-radius: 4px;
+                    transition: width .2s;
+                }
+            }
+
+            #progress-text {
+                font-size: .75rem;
+                font-variant-numeric: tabular-nums;
+                color: var(--text-secondary);
+                white-space: nowrap;
+                min-width: 3.5rem;
+                text-align: right;
+            }
+        }
+    }
+
+    #results {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+
+        .group {
+            background: var(--surface);
+            border-radius: 10px;
+            padding: .75rem 0 .25rem;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+
+            h2 {
+                font-size: .8rem;
+                font-weight: 500;
+                letter-spacing: .02em;
+                text-transform: uppercase;
+                color: var(--text-secondary);
+                padding: 0 1rem .5rem;
+                border-bottom: 1px solid var(--border-light);
+                margin: 0;
+            }
+
+            .scroll {
+                overflow-x: auto;
+                padding: 0 .25rem;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: .82rem;
+                font-variant-numeric: tabular-nums;
+
+                th,
+                td {
+                    padding: .5rem .75rem;
+                    text-align: right;
+                    border-bottom: 1px solid var(--border-light);
+                }
+
+                th {
+                    font-weight: 450;
+                    font-size: .7rem;
+                    text-transform: uppercase;
+                    letter-spacing: .03em;
+                    color: var(--text-secondary);
+                    border-bottom-color: var(--border);
+                    padding-top: .6rem;
+                    padding-bottom: .5rem;
+                }
+
+                td:first-child,
+                th:first-child {
+                    text-align: left;
+                    padding-left: 1rem;
+                }
+                td:last-child,
+                th:last-child {
+                    padding-right: 1rem;
+                }
+
+                tr:last-child td {
+                    border-bottom: none;
+                }
+                tr:hover td {
+                    background: var(--surface-hover);
+                }
+            }
+
+            .ratio {
+                font-weight: 500;
+                &.win { color: var(--win); }
+                &.loss { color: var(--loss); }
+                &.draw { color: var(--draw); }
+            }
+        }
+
+        .placeholder {
+            color: var(--text-muted);
+            font-size: .85rem;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+    }
+}
+
+@media (max-width: 600px) {
+    #app {
+        padding: 1rem .75rem;
+
+        #toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: .5rem;
+            padding: .75rem;
+
+            .actions {
+                justify-content: space-between;
+            }
+            .meter {
+                flex: 1 1 auto;
+            }
+        }
+
+        th,
+        td {
+            padding: .4rem .4rem;
+            font-size: .75rem;
+        }
+        td:first-child,
+        th:first-child {
+            padding-left: .75rem;
+        }
+        td:last-child,
+        th:last-child {
+            padding-right: .75rem;
+        }
+
+        .group {
+            border-radius: 8px;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #progress-fill,
+    #run-btn {
+        transition: none;
+    }
+}

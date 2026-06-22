@@ -294,6 +294,8 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
 
 public static partial class math
 {
+    private static readonly float4 s_quaternionConjugateMask = new(-1.0f, -1.0f, -1.0f, 1.0f);
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion quaternion(float x, float y, float z, float w) => new(x, y, z, w);
 
@@ -349,14 +351,14 @@ public static partial class math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion conjugate(quaternion q)
     {
-        return quaternion(q.value * float4(-1.0f, -1.0f, -1.0f, 1.0f));
+        return quaternion(q.value * s_quaternionConjugateMask);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion inverse(quaternion q)
     {
         var x = q.value;
-        return quaternion(rcp(dot(x, x)) * x * float4(-1.0f, -1.0f, -1.0f, 1.0f));
+        return quaternion(rcp(dot(x, x)) * x * s_quaternionConjugateMask);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

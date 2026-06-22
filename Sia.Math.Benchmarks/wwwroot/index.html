@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sia.Math Benchmarks</title>
+    <link rel="icon" href="data:," />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap"></script>
+    <script type="module" src="main#[.{fingerprint}].js"></script>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Sia.Math Benchmarks</h1>
+        </header>
+        <div id="toolbar">
+            <div class="actions">
+                <button id="run-btn">Run All</button>
+                <span id="status"></span>
+            </div>
+            <div class="meter">
+                <div class="bar">
+                    <div id="progress-fill"></div>
+                </div>
+                <span id="progress-text">0 / 0</span>
+            </div>
+        </div>
+        <div id="results"></div>
+    </div>
+</body>
+</html>

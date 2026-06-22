@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="obj_browser\**" />
+    <Compile Remove="CodeGenerators\**" />
+    <EmbeddedResource Remove="obj_browser\**" />
+    <None Remove="obj_browser\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.0" />
   </ItemGroup>
 

@@ -18,7 +18,7 @@ public static class MatrixOps
         var result = mathBody.ToString().TrimEnd();
         return string.IsNullOrEmpty(result)
             ? CodeFragment.Empty
-            : new CodeFragment { Usings = ["System.Runtime.CompilerServices"], MathBody = result };
+            : new CodeFragment { Usings = ["System.Runtime.CompilerServices", "System.Numerics"], MathBody = result };
     }
 
     private static void EmitTranspose(TypeShape shape, StringBuilder body)
@@ -30,20 +30,23 @@ public static class MatrixOps
         body.AppendLine($"        public static {resultType} transpose(in {shape.TypeName} v)");
         body.AppendLine("        {");
 
-        if (shape.BaseType == BaseType.Float && shape.IsSquareMatrix && shape.Rows is 3 or 4)
+        if (shape.BaseType == BaseType.Float && shape.IsSquareMatrix && shape.Rows == 4)
         {
-            EmitSseTranspose(shape, resultType, colType, body);
-            body.AppendLine("            else");
-            body.AppendLine("            {");
-            EmitScalarGatherTranspose(shape, resultType, colType, body, "                ");
-            body.AppendLine("            }");
+            body.AppendLine($"            ref var m = ref global::System.Runtime.CompilerServices.Unsafe.As<{shape.TypeName}, global::System.Numerics.Matrix4x4>(ref global::System.Runtime.CompilerServices.Unsafe.AsRef(in v));");
+            body.AppendLine( "            var t = global::System.Numerics.Matrix4x4.Transpose(m);");
+            body.AppendLine($"            return global::System.Runtime.CompilerServices.Unsafe.As<global::System.Numerics.Matrix4x4, {shape.TypeName}>(ref t);");
+            body.AppendLine("        }");
+        }
+        else if (shape.BaseType == BaseType.Float && shape.IsSquareMatrix && shape.Rows == 3)
+        {
+            EmitShuffleOrTranspose(shape, resultType, colType, body, "            ");
+            body.AppendLine("        }");
         }
         else
         {
             EmitScalarGatherTranspose(shape, resultType, colType, body, "            ");
+            body.AppendLine("        }");
         }
-
-        body.AppendLine("        }");
     }
 
     private static void EmitScalarGatherTranspose(TypeShape shape, string resultType, string colType, StringBuilder body, string indent)
@@ -61,31 +64,41 @@ public static class MatrixOps
         body.AppendLine($"{indent});");
     }
 
-    private static void EmitSseTranspose(TypeShape shape, string resultType, string colType, StringBuilder body)
+    private static void EmitShuffleOrTranspose(TypeShape shape, string resultType, string colType, StringBuilder body, string indent)
     {
-        const string sse = "global::System.Runtime.Intrinsics.X86.Sse";
-        var n = shape.Rows;
+        const string Vector128 = "global::System.Runtime.Intrinsics.Vector128";
+        var rows = shape.Rows;
         var fields = TypeShape.MatrixFields;
 
-        body.AppendLine($"            if ({sse}.IsSupported)");
-        body.AppendLine("            {");
-        for (var i = 0; i < n; i++)
-            body.AppendLine($"                var r{i} = v.{fields[i]}.data;");
-        if (n == 3)
-            body.AppendLine("                var r3 = global::System.Runtime.Intrinsics.Vector128<float>.Zero;");
+        string ShuffleOr(string sourceA, string maskA, string sourceB, string maskB) =>
+            $"{Vector128}.Shuffle({sourceA}, {maskA}) | {Vector128}.Shuffle({sourceB}, {maskB})";
 
-        body.AppendLine($"                var t0 = {sse}.Shuffle(r0, r1, 0x44);");
-        body.AppendLine($"                var t2 = {sse}.Shuffle(r0, r1, 0xEE);");
-        body.AppendLine($"                var t1 = {sse}.Shuffle(r2, r3, 0x44);");
-        body.AppendLine($"                var t3 = {sse}.Shuffle(r2, r3, 0xEE);");
-        body.AppendLine($"                return new {resultType}(");
-        body.AppendLine($"                    new {colType}({sse}.Shuffle(t0, t1, 0x88)),");
-        body.AppendLine($"                    new {colType}({sse}.Shuffle(t0, t1, 0xDD)),");
-        body.AppendLine($"                    new {colType}({sse}.Shuffle(t2, t3, 0x88)){(n == 4 ? "," : string.Empty)}");
-        if (n == 4)
-            body.AppendLine($"                    new {colType}({sse}.Shuffle(t2, t3, 0xDD))");
-        body.AppendLine("                );");
-        body.AppendLine("            }");
+        for (var i = 0; i < rows; i++)
+            body.AppendLine($"{indent}    var row{i} = v.{fields[i]}.data;");
+        body.AppendLine($"{indent}    var row3 = {Vector128}<float>.Zero;");
+
+        body.AppendLine($"{indent}    const int zero = 4;");
+        body.AppendLine($"{indent}    var mask01a = {Vector128}.Create(0, 1, zero, zero);");
+        body.AppendLine($"{indent}    var mask01b = {Vector128}.Create(zero, zero, 0, 1);");
+        body.AppendLine($"{indent}    var mask23a = {Vector128}.Create(2, 3, zero, zero);");
+        body.AppendLine($"{indent}    var mask23b = {Vector128}.Create(zero, zero, 2, 3);");
+        body.AppendLine($"{indent}    var mask02a = {Vector128}.Create(0, 2, zero, zero);");
+        body.AppendLine($"{indent}    var mask02b = {Vector128}.Create(zero, zero, 0, 2);");
+        body.AppendLine($"{indent}    var mask13a = {Vector128}.Create(1, 3, zero, zero);");
+        body.AppendLine($"{indent}    var mask13b = {Vector128}.Create(zero, zero, 1, 3);");
+        body.AppendLine();
+
+        body.AppendLine($"{indent}    var tmp0 = {ShuffleOr("row0", "mask01a", "row1", "mask01b")};");
+        body.AppendLine($"{indent}    var tmp2 = {ShuffleOr("row0", "mask23a", "row1", "mask23b")};");
+        body.AppendLine($"{indent}    var tmp1 = {ShuffleOr("row2", "mask01a", "row3", "mask01b")};");
+        body.AppendLine($"{indent}    var tmp3 = {ShuffleOr("row2", "mask23a", "row3", "mask23b")};");
+        body.AppendLine();
+
+        body.AppendLine($"{indent}    return new {resultType}(");
+        body.AppendLine($"{indent}        new {colType}({ShuffleOr("tmp0", "mask02a", "tmp1", "mask02b")}),");
+        body.AppendLine($"{indent}        new {colType}({ShuffleOr("tmp0", "mask13a", "tmp1", "mask13b")}),");
+        body.AppendLine($"{indent}        new {colType}({ShuffleOr("tmp2", "mask02a", "tmp3", "mask02b")})");
+        body.AppendLine($"{indent}    );");
     }
 
     private static void EmitInverse(TypeShape shape, StringBuilder body)
@@ -126,23 +139,36 @@ public static class MatrixOps
             body.AppendLine($"        public static {tn}4x4 inverse(in {tn}4x4 m)");
             body.AppendLine("        {");
             body.AppendLine("            var r0 = m.c0; var r1 = m.c1; var r2 = m.c2; var r3 = m.c3;");
-            body.AppendLine("            var m00 = dot(r1.yzw, cross(r2.yzw, r3.yzw));");
-            body.AppendLine("            var m10 = dot(r0.yzw, cross(r2.yzw, r3.yzw));");
-            body.AppendLine("            var m20 = dot(r0.yzw, cross(r1.yzw, r3.yzw));");
-            body.AppendLine("            var m30 = dot(r0.yzw, cross(r1.yzw, r2.yzw));");
-            body.AppendLine("            var m01 = dot(r1.xzw, cross(r2.xzw, r3.xzw));");
-            body.AppendLine("            var m11 = dot(r0.xzw, cross(r2.xzw, r3.xzw));");
-            body.AppendLine("            var m21 = dot(r0.xzw, cross(r1.xzw, r3.xzw));");
-            body.AppendLine("            var m31 = dot(r0.xzw, cross(r1.xzw, r2.xzw));");
-            body.AppendLine("            var m02 = dot(r1.xyw, cross(r2.xyw, r3.xyw));");
-            body.AppendLine("            var m12 = dot(r0.xyw, cross(r2.xyw, r3.xyw));");
-            body.AppendLine("            var m22 = dot(r0.xyw, cross(r1.xyw, r3.xyw));");
-            body.AppendLine("            var m32 = dot(r0.xyw, cross(r1.xyw, r2.xyw));");
-            body.AppendLine("            var m03 = dot(r1.xyz, cross(r2.xyz, r3.xyz));");
-            body.AppendLine("            var m13 = dot(r0.xyz, cross(r2.xyz, r3.xyz));");
-            body.AppendLine("            var m23 = dot(r0.xyz, cross(r1.xyz, r3.xyz));");
-            body.AppendLine("            var m33 = dot(r0.xyz, cross(r1.xyz, r2.xyz));");
-            body.AppendLine("            var det = r0.x * m00 - r0.y * m01 + r0.z * m02 - r0.w * m03;");
+            body.AppendLine("            var r0x = r0.x; var r0y = r0.y; var r0z = r0.z; var r0w = r0.w;");
+            body.AppendLine("            var r1x = r1.x; var r1y = r1.y; var r1z = r1.z; var r1w = r1.w;");
+            body.AppendLine("            var r2x = r2.x; var r2y = r2.y; var r2z = r2.z; var r2w = r2.w;");
+            body.AppendLine("            var r3x = r3.x; var r3y = r3.y; var r3z = r3.z; var r3w = r3.w;");
+            body.AppendLine();
+            body.AppendLine("            var xy23 = r2x * r3y - r2y * r3x; var xz23 = r2x * r3z - r2z * r3x; var xw23 = r2x * r3w - r2w * r3x;");
+            body.AppendLine("            var yz23 = r2y * r3z - r2z * r3y; var yw23 = r2y * r3w - r2w * r3y; var zw23 = r2z * r3w - r2w * r3z;");
+            body.AppendLine("            var xy13 = r1x * r3y - r1y * r3x; var xz13 = r1x * r3z - r1z * r3x; var xw13 = r1x * r3w - r1w * r3x;");
+            body.AppendLine("            var yz13 = r1y * r3z - r1z * r3y; var yw13 = r1y * r3w - r1w * r3y; var zw13 = r1z * r3w - r1w * r3z;");
+            body.AppendLine("            var xy12 = r1x * r2y - r1y * r2x; var xz12 = r1x * r2z - r1z * r2x; var xw12 = r1x * r2w - r1w * r2x;");
+            body.AppendLine("            var yz12 = r1y * r2z - r1z * r2y; var yw12 = r1y * r2w - r1w * r2y; var zw12 = r1z * r2w - r1w * r2z;");
+            body.AppendLine();
+            body.AppendLine("            var m00 = r1y * zw23 - r1z * yw23 + r1w * yz23;");
+            body.AppendLine("            var m10 = r0y * zw23 - r0z * yw23 + r0w * yz23;");
+            body.AppendLine("            var m20 = r0y * zw13 - r0z * yw13 + r0w * yz13;");
+            body.AppendLine("            var m30 = r0y * zw12 - r0z * yw12 + r0w * yz12;");
+            body.AppendLine("            var m01 = r1x * zw23 - r1z * xw23 + r1w * xz23;");
+            body.AppendLine("            var m11 = r0x * zw23 - r0z * xw23 + r0w * xz23;");
+            body.AppendLine("            var m21 = r0x * zw13 - r0z * xw13 + r0w * xz13;");
+            body.AppendLine("            var m31 = r0x * zw12 - r0z * xw12 + r0w * xz12;");
+            body.AppendLine("            var m02 = r1x * yw23 - r1y * xw23 + r1w * xy23;");
+            body.AppendLine("            var m12 = r0x * yw23 - r0y * xw23 + r0w * xy23;");
+            body.AppendLine("            var m22 = r0x * yw13 - r0y * xw13 + r0w * xy13;");
+            body.AppendLine("            var m32 = r0x * yw12 - r0y * xw12 + r0w * xy12;");
+            body.AppendLine("            var m03 = r1x * yz23 - r1y * xz23 + r1z * xy23;");
+            body.AppendLine("            var m13 = r0x * yz23 - r0y * xz23 + r0z * xy23;");
+            body.AppendLine("            var m23 = r0x * yz13 - r0y * xz13 + r0z * xy13;");
+            body.AppendLine("            var m33 = r0x * yz12 - r0y * xz12 + r0z * xy12;");
+            body.AppendLine();
+            body.AppendLine("            var det = r0x * m00 - r0y * m01 + r0z * m02 - r0w * m03;");
             body.AppendLine($"            var rcpDet = {one} / det;");
             body.AppendLine($"            return new {tn}4x4(");
             body.AppendLine($"                new {tn}4(m00, -m10, m20, -m30) * rcpDet,");
