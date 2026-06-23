@@ -71,12 +71,26 @@ public static class MathFunctionCatalog
         Fn("clamp", [BaseType.Int, BaseType.UInt, BaseType.Float, BaseType.Double], (1, 4), sig =>
         {
             var name = sig.Shape.TypeName;
-            if (sig.Dimension >= 2 && sig.Type == BaseType.Float && sig.Shape.IsSimdEligible)
-                return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => new {name}(Vector128.Clamp(v.data, a.data, b.data));"];
             if (sig.Dimension >= 2 && sig.Type is BaseType.Int or BaseType.UInt && sig.Shape.IsSimdEligible)
             {
                 var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
                 return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => new {name}({vc}.Max(a.data, {vc}.Min(b.data, v.data)));"];
+            }
+            if (sig.Dimension >= 2 && sig.Type is BaseType.Float or BaseType.Double && sig.Shape.IsSimdEligible)
+            {
+                var vc = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+                return [
+                    Attr,
+                    $"public static {name} clamp({name} v, {name} a, {name} b)",
+                    "{",
+                    "    var av = a.data;",
+                    "    var bv = b.data;",
+                    "    var vv = v.data;",
+                    $"    var mask = {vc}.BitwiseOr({vc}.LessThan(bv, vv), {vc}.IsNaN(vv));",
+                    $"    var t = {vc}.ConditionalSelect(mask, bv, vv);",
+                    $"    return new {name}({vc}.ConditionalSelect({vc}.GreaterThan(av, t), av, t));",
+                    "}"
+                ];
             }
             return [Attr, $"public static {name} clamp({name} v, {name} a, {name} b) => max(a, min(b, v));"];
         }),
