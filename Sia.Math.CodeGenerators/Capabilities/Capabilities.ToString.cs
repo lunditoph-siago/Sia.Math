@@ -1,7 +1,7 @@
+namespace Sia.Math.CodeGenerators.Capabilities;
+
 using System.Linq;
 using System.Text;
-
-namespace Sia.Math.CodeGenerators.Capabilities;
 
 public static class ToStringGen
 {
@@ -19,8 +19,7 @@ public static class ToStringGen
             : $"            return $\"{shape.TypeName}({template})\";");
         body.AppendLine("        }");
 
-        if (hasFormatter)
-        {
+        if (hasFormatter) {
             body.AppendLine();
             body.AppendLine("        public readonly string ToString([System.Diagnostics.CodeAnalysis.StringSyntax(System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.NumericFormat)] string? format, IFormatProvider? formatProvider)");
             body.AppendLine("        {");
@@ -28,8 +27,7 @@ public static class ToStringGen
             body.AppendLine("        }");
         }
 
-        return new CodeFragment
-        {
+        return new CodeFragment {
             Usings = hasFormatter ? ["System.Diagnostics.CodeAnalysis"] : [],
             Inherits = hasFormatter ? ["IFormattable"] : [],
             TypeBody = body.ToString().TrimEnd()

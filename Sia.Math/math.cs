@@ -194,7 +194,14 @@ public static partial class math
     public static bool2 isfinite(float2 x) => abs(x) < float.PositiveInfinity;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool3 isfinite(float3 x) => abs(x) < float.PositiveInfinity;
+    public static bool3 isfinite(float3 x)
+    {
+        var mask = Vector128.IsFinite(x.data).ExtractMostSignificantBits();
+        return new bool3(
+            (mask & 0b001u) != 0,
+            (mask & 0b010u) != 0,
+            (mask & 0b100u) != 0);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool4 isfinite(float4 x) => abs(x) < float.PositiveInfinity;
@@ -242,7 +249,14 @@ public static partial class math
     public static bool2 isnan(float2 x) => (asuint(x) & 0x7FFFFFFF) > 0x7F800000;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool3 isnan(float3 x) => (asuint(x) & 0x7FFFFFFF) > 0x7F800000;
+    public static bool3 isnan(float3 x)
+    {
+        var mask = Vector128.IsNaN(x.data).ExtractMostSignificantBits();
+        return new bool3(
+            (mask & 0b001u) != 0,
+            (mask & 0b010u) != 0,
+            (mask & 0b100u) != 0);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool4 isnan(float4 x) => (asuint(x) & 0x7FFFFFFF) > 0x7F800000;

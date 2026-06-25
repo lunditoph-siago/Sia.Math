@@ -1,6 +1,6 @@
-using System;
-
 namespace Sia.Math.CodeGenerators.Functions;
+
+using System;
 
 public readonly record struct MathSignature(
     string Name,

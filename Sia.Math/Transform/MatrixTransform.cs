@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
 
 #pragma warning disable 8981
 
@@ -34,7 +35,19 @@ public static partial class math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float3 mul(in MatrixTransform a, float3 x)
     {
-        return mul(x, a.Rotation) + a.Translation;
+        var result = Vector128.FusedMultiplyAdd(
+            a.Rotation.c0.data,
+            Vector128.Create(x.x),
+            a.Translation.data);
+        result = Vector128.FusedMultiplyAdd(
+            a.Rotation.c1.data,
+            Vector128.Create(x.y),
+            result);
+        result = Vector128.FusedMultiplyAdd(
+            a.Rotation.c2.data,
+            Vector128.Create(x.z),
+            result);
+        return new float3(result);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

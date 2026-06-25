@@ -1,17 +1,19 @@
+namespace Sia.Math.CodeGenerators.Capabilities;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Sia.Math.CodeGenerators.Capabilities;
-
 public static class Constructors
 {
-    private static readonly string[] s_Imports = ["System.Runtime.CompilerServices"];
+    private static readonly string[] Imports = ["System.Runtime.CompilerServices"];
 
     public static CodeFragment Generate(TypeShape shape)
     {
-        if (shape.IsMatrix)
+        if (shape.IsMatrix) {
             return GenerateMatrixConstructors(shape);
+        }
+
         return GenerateVectorConstructors(shape);
     }
 
@@ -23,9 +25,8 @@ public static class Constructors
 
         GenerateOverloads(shape, shape.Rows, 0, components, typeBody, mathBody);
 
-        return new CodeFragment
-        {
-            Usings = s_Imports,
+        return new CodeFragment {
+            Usings = Imports,
             TypeBody = typeBody.ToString().TrimEnd(),
             MathBody = mathBody.Length > 0 ? mathBody.ToString().TrimEnd() : null
         };
@@ -35,56 +36,55 @@ public static class Constructors
         TypeShape shape, int remaining, int numParams, int[] paramComps,
         StringBuilder typeBody, StringBuilder mathBody)
     {
-        if (remaining == 0)
-        {
-            EmitVectorCtor(shape, numParams, paramComps, typeBody, mathBody);
+        if (remaining == 0) {
+            GenerateVectorCtor(shape, numParams, paramComps, typeBody, mathBody);
             return;
         }
-        for (var i = 1; i <= remaining; i++)
-        {
+        for (var i = 1; i <= remaining; i++) {
             paramComps[numParams] = i;
             GenerateOverloads(shape, remaining - i, numParams + 1, paramComps, typeBody, mathBody);
         }
     }
 
-    private static void EmitVectorCtor(
+    private static void GenerateVectorCtor(
         TypeShape shape, int numParams, int[] paramComps,
         StringBuilder typeBody, StringBuilder mathBody)
     {
         var typeParams = BuildTypeParams(shape.BaseType, numParams, paramComps);
         var descs = BuildDescriptions(shape, numParams, paramComps);
 
-        foreach (var d in descs.Take(descs.Count - 1))
+        foreach (var d in descs.Take(descs.Count - 1)) {
             typeBody.AppendLine($"        {d}");
+        }
+
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         typeBody.AppendLine($"        public {shape.TypeName}({typeParams})");
         typeBody.AppendLine("        {");
 
         var args = new List<string>();
         var compIdx = 0;
-        for (var p = 0; p < numParams; p++)
-        {
+        for (var p = 0; p < numParams; p++) {
             var cnt = paramComps[p];
             var compStr = string.Concat(TypeShape.Components.Skip(compIdx).Take(cnt));
-            for (var j = 0; j < cnt; j++)
-            {
+            for (var j = 0; j < cnt; j++) {
                 var rhs = cnt > 1 ? $"{compStr}.{TypeShape.Components[j]}" : compStr;
                 args.Add(rhs);
                 compIdx++;
             }
         }
 
-        if (shape.BaseType == BaseType.Bool)
-        {
-            for (var i = 0; i < args.Count; i++)
+        if (shape.BaseType == BaseType.Bool) {
+            for (var i = 0; i < args.Count; i++) {
                 typeBody.AppendLine($"            this.{TypeShape.Components[i]} = {args[i]};");
+            }
         }
-        else
-        {
+        else {
             var laneCount = Simd.SimdStrategy.NativeLaneCount(shape.BaseType, shape.Rows);
             var zero = shape.BaseType.ToTypedLiteral(0);
-            for (var i = shape.Rows; i < laneCount; i++)
+            for (var i = shape.Rows; i < laneCount; i++) {
                 args.Add(zero);
+            }
+
             var vectorClassName = Simd.SimdStrategy.NativeVectorClassName(shape.BaseType, shape.Rows);
             typeBody.AppendLine($"            data = {vectorClassName}.Create({string.Join(", ", args)});");
         }
@@ -92,17 +92,21 @@ public static class Constructors
 
         var bodyBuilder = new StringBuilder();
         compIdx = 0;
-        for (var p = 0; p < numParams; p++)
-        {
+        for (var p = 0; p < numParams; p++) {
             var cnt = paramComps[p];
             var compStr = string.Concat(TypeShape.Components.Skip(compIdx).Take(cnt));
-            if (p != 0) bodyBuilder.Append(", ");
+            if (p != 0) {
+                bodyBuilder.Append(", ");
+            }
+
             bodyBuilder.Append(compStr);
             compIdx += cnt;
         }
 
-        foreach (var d in descs)
+        foreach (var d in descs) {
             mathBody.AppendLine($"        {d}");
+        }
+
         mathBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         mathBody.AppendLine($"        public static {shape.TypeName} {shape.TypeName}({typeParams}) => new {shape.TypeName}({bodyBuilder});");
     }
@@ -110,8 +114,7 @@ public static class Constructors
     private static string BuildTypeParams(BaseType baseType, int numParams, int[] paramComps)
     {
         var compIdx = 0;
-        return string.Join(", ", paramComps.Take(numParams).Select(cnt =>
-        {
+        return string.Join(", ", paramComps.Take(numParams).Select(cnt => {
             var paramType = baseType.ToTypeName(cnt, 1);
             var compStr = string.Concat(TypeShape.Components.Skip(compIdx).Take(cnt));
             compIdx += cnt;
@@ -119,7 +122,7 @@ public static class Constructors
         }));
     }
 
-    private static System.Collections.Generic.List<string> BuildDescriptions(TypeShape shape, int numParams, int[] paramComps)
+    private static List<string> BuildDescriptions(TypeShape shape, int numParams, int[] paramComps)
     {
         var parts = Enumerable.Range(0, numParams)
             .GroupBy(i => paramComps[i])
@@ -130,13 +133,12 @@ public static class Constructors
             ? $"{string.Join(", ", parts.Take(parts.Count - 1))} and {parts.Last()}"
             : parts.Last();
 
-        var descs = new System.Collections.Generic.List<string>
+        var descs = new List<string>
         {
             $"/// <summary>Constructs a <see cref=\"{shape.TypeName}\" /> vector from {paramDesc}.</summary>"
         };
 
-        descs.AddRange(paramComps.Take(numParams).Select((cnt, i) =>
-        {
+        descs.AddRange(paramComps.Take(numParams).Select((cnt, i) => {
             var compStr = string.Concat(TypeShape.Components.Skip(paramComps.Take(i).Sum()).Take(cnt));
             var plural = cnt > 1 ? "fields" : "field";
             return $"/// <param name=\"{compStr}\">The value to assign to the <see cref=\"{compStr}\" /> {plural}.</param>";
@@ -156,14 +158,18 @@ public static class Constructors
         var colParams = string.Join(", ", colFields.Select(f => $"{colType} {f}"));
 
         typeBody.AppendLine($"        /// <summary>Constructs a <see cref=\"{shape.TypeName}\" /> matrix from {shape.BaseType.ToTypeDescription(shape.Rows, 1, shape.Columns)}.</summary>");
-        foreach (var f in colFields)
+        foreach (var f in colFields) {
             typeBody.AppendLine($"        /// <param name=\"{f}\">The value to assign to the <see cref=\"{f}\" /> field.</param>");
+        }
+
         typeBody.AppendLine($"        /// <returns>The <see cref=\"{shape.TypeName}\" /> constructed from arguments.</returns>");
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         typeBody.AppendLine($"        public {shape.TypeName}({colParams})");
         typeBody.AppendLine("        {");
-        foreach (var f in colFields)
+        foreach (var f in colFields) {
             typeBody.AppendLine($"            this.{f} = {f};");
+        }
+
         typeBody.AppendLine("        }");
 
         mathBody.AppendLine($"        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
@@ -176,14 +182,15 @@ public static class Constructors
             .Select(i => $"{shape.BaseTypeName} m{i / shape.Columns}{i % shape.Columns}"));
 
         typeBody.AppendLine($"        /// <summary>Constructs a <see cref=\"{shape.TypeName}\" /> matrix from {shape.Rows * shape.Columns} <see cref=\"{shape.BaseTypeName}\" /> values given in row-major order.</summary>");
-        foreach (var i in Enumerable.Range(0, shape.Rows * shape.Columns))
+        foreach (var i in Enumerable.Range(0, shape.Rows * shape.Columns)) {
             typeBody.AppendLine($"        /// <param name=\"m{i / shape.Columns}{i % shape.Columns}\">The value to assign to the {(i % shape.Columns + 1).FormatOrdinals()} element in the {(i / shape.Columns + 1).FormatOrdinals()} row.</param>");
+        }
+
         typeBody.AppendLine($"        /// <returns>The <see cref=\"{shape.TypeName}\" /> constructed from arguments.</returns>");
         typeBody.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         typeBody.AppendLine($"        public {shape.TypeName}({rowParams})");
         typeBody.AppendLine("        {");
-        for (var c = 0; c < shape.Columns; c++)
-        {
+        for (var c = 0; c < shape.Columns; c++) {
             var comps = string.Join(", ", Enumerable.Range(0, shape.Rows).Select(r => $"m{r}{c}"));
             typeBody.AppendLine($"            this.{TypeShape.MatrixFields[c]} = new {colType}({comps});");
         }
@@ -194,9 +201,8 @@ public static class Constructors
         mathBody.AppendLine($"        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         mathBody.AppendLine($"        public static {shape.TypeName} {shape.TypeName}({rowParams}) => new {shape.TypeName}({rowBody});");
 
-        return new CodeFragment
-        {
-            Usings = s_Imports,
+        return new CodeFragment {
+            Usings = Imports,
             TypeBody = typeBody.ToString().TrimEnd(),
             MathBody = mathBody.ToString().TrimEnd()
         };

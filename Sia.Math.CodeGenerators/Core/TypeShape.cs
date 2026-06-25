@@ -1,7 +1,7 @@
+namespace Sia.Math.CodeGenerators;
+
 using System;
 using System.Runtime.CompilerServices;
-
-namespace Sia.Math.CodeGenerators;
 
 public enum BaseType
 {
@@ -48,8 +48,7 @@ public readonly record struct TypeShape(BaseType BaseType, int Rows, int Columns
 public static class BaseTypeHelper
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ToBaseTypeName(this BaseType baseType) => baseType switch
-    {
+    public static string ToBaseTypeName(this BaseType baseType) => baseType switch {
         BaseType.Bool => "bool",
         BaseType.Int => "int",
         BaseType.UInt => "uint",
@@ -62,9 +61,18 @@ public static class BaseTypeHelper
     public static string ToTypeName(this BaseType baseType, int rows, int columns)
     {
         var name = baseType.ToBaseTypeName();
-        if (rows == 1 && columns == 1) return name;
-        if (rows == 1 && columns > 1) return name + columns;
-        if (columns == 1) return name + rows;
+        if (rows == 1 && columns == 1) {
+            return name;
+        }
+
+        if (rows == 1 && columns > 1) {
+            return name + columns;
+        }
+
+        if (columns == 1) {
+            return name + rows;
+        }
+
         return $"{name}{rows}x{columns}";
     }
 
@@ -85,8 +93,7 @@ public static class BaseTypeHelper
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string ToTypedLiteral(this BaseType baseType, int value) => baseType switch
-    {
+    public static string ToTypedLiteral(this BaseType baseType, int value) => baseType switch {
         BaseType.Int => $"{value}",
         BaseType.UInt => $"{value}u",
         BaseType.Float => $"{value}.0f",
@@ -98,8 +105,7 @@ public static class BaseTypeHelper
 public static class NumberHelper
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string FormatOrdinals(this int number) => number switch
-    {
+    public static string FormatOrdinals(this int number) => number switch {
         1 => "first",
         2 => "second",
         3 => "third",
@@ -108,8 +114,7 @@ public static class NumberHelper
     };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static string FormatQuantifiers(this int number, bool isVowel) => number switch
-    {
+    public static string FormatQuantifiers(this int number, bool isVowel) => number switch {
         1 => isVowel ? "an " : "a ",
         2 => "two ",
         3 => "three ",

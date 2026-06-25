@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
 using static Sia.Math.math;
 
 #pragma warning disable 8981
@@ -294,7 +295,7 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
 
 public static partial class math
 {
-    private static readonly float4 s_quaternionConjugateMask = new(-1.0f, -1.0f, -1.0f, 1.0f);
+    private static readonly Vector128<uint> s_quaternionConjugateMask = Vector128.Create(0x80000000u, 0x80000000u, 0x80000000u, 0u);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion quaternion(float x, float y, float z, float w) => new(x, y, z, w);
@@ -351,14 +352,19 @@ public static partial class math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion conjugate(quaternion q)
     {
-        return quaternion(q.value * s_quaternionConjugateMask);
+        var bits = Vector128.Xor(Vector128.AsUInt32(q.value.data), s_quaternionConjugateMask);
+        var conjugated = Vector128.AsSingle(bits);
+        return new quaternion(new float4(conjugated));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion inverse(quaternion q)
     {
-        var x = q.value;
-        return quaternion(rcp(dot(x, x)) * x * s_quaternionConjugateMask);
+        var value = q.value.data;
+        var bits = Vector128.Xor(Vector128.AsUInt32(value), s_quaternionConjugateMask);
+        var numerator = Vector128.AsSingle(bits);
+        var denominator = Vector128.Create(Vector128.Dot(value, value));
+        return new quaternion(new float4(numerator / denominator));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -388,24 +394,31 @@ public static partial class math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion normalize(quaternion q)
     {
-        var x = q.value;
-        return quaternion(rsqrt(dot(x, x)) * x);
+        var value = q.value.data;
+        var length = Vector128.Sqrt(Vector128.Create(Vector128.Dot(value, value)));
+        return new quaternion(new float4(value / length));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion normalizesafe(quaternion q)
     {
-        var x = q.value;
-        var len = dot(x, x);
-        return quaternion(select(Math.quaternion.identity.value, x * rsqrt(len), len > FLT_MIN_NORMAL));
+        var value = q.value.data;
+        var lengthSquared = Vector128.Dot(value, value);
+        if (!(lengthSquared > FLT_MIN_NORMAL)) return Math.quaternion.identity;
+
+        var inverseLength = Vector128.Create(1.0f / MathF.Sqrt(lengthSquared));
+        return new quaternion(new float4(value * inverseLength));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion normalizesafe(quaternion q, quaternion defaultvalue)
     {
-        var x = q.value;
-        var len = dot(x, x);
-        return quaternion(select(defaultvalue.value, x * rsqrt(len), len > FLT_MIN_NORMAL));
+        var value = q.value.data;
+        var lengthSquared = Vector128.Dot(value, value);
+        if (!(lengthSquared > FLT_MIN_NORMAL)) return defaultvalue;
+
+        var inverseLength = Vector128.Create(1.0f / MathF.Sqrt(lengthSquared));
+        return new quaternion(new float4(value * inverseLength));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

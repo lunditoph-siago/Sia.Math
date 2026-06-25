@@ -1,13 +1,16 @@
-using System.Linq;
-
 namespace Sia.Math.CodeGenerators.Capabilities;
+
+using System.Linq;
+using System.Text;
 
 public static class Fields
 {
     public static CodeFragment Generate(TypeShape shape)
     {
-        if (shape.IsMatrix)
+        if (shape.IsMatrix) {
             return GenerateMatrix(shape);
+        }
+
         return shape.BaseType == BaseType.Bool
             ? GenerateBoolVector(shape)
             : GenerateSimdVector(shape);
@@ -15,15 +18,13 @@ public static class Fields
 
     private static CodeFragment GenerateBoolVector(TypeShape shape)
     {
-        var body = new System.Text.StringBuilder();
-        foreach (var i in Enumerable.Range(0, shape.Rows))
-        {
+        var body = new StringBuilder();
+        foreach (var i in Enumerable.Range(0, shape.Rows)) {
             body.AppendLine($"        [MarshalAs(UnmanagedType.U1)]");
             body.AppendLine($"        public {shape.BaseTypeName} {TypeShape.VectorFields[i]};");
         }
 
-        return new CodeFragment
-        {
+        return new CodeFragment {
             Usings = ["System.Runtime.InteropServices"],
             TypeBody = body.ToString().TrimEnd()
         };
@@ -32,11 +33,10 @@ public static class Fields
     private static CodeFragment GenerateSimdVector(TypeShape shape)
     {
         var vectorTypeName = Simd.SimdStrategy.NativeVectorTypeName(shape.BaseType, shape.Rows);
-        var body = new System.Text.StringBuilder();
+        var body = new StringBuilder();
         body.AppendLine($"        public {vectorTypeName} data;");
 
-        foreach (var i in Enumerable.Range(0, shape.Rows))
-        {
+        foreach (var i in Enumerable.Range(0, shape.Rows)) {
             body.AppendLine();
             body.AppendLine($"        public {shape.BaseTypeName} {TypeShape.VectorFields[i]}");
             body.AppendLine("        {");
@@ -51,8 +51,7 @@ public static class Fields
         body.AppendLine("        [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         body.AppendLine($"        public {shape.TypeName}({vectorTypeName} v) => data = v;");
 
-        return new CodeFragment
-        {
+        return new CodeFragment {
             Usings = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"],
             TypeBody = body.ToString().TrimEnd()
         };
@@ -61,9 +60,10 @@ public static class Fields
     private static CodeFragment GenerateMatrix(TypeShape shape)
     {
         var columnType = shape.BaseType.ToTypeName(shape.Rows, 1);
-        var body = new System.Text.StringBuilder();
-        for (var i = 0; i < shape.Columns; i++)
+        var body = new StringBuilder();
+        for (var i = 0; i < shape.Columns; i++) {
             body.AppendLine($"        public {columnType} {TypeShape.MatrixFields[i]};");
+        }
 
         return new CodeFragment { TypeBody = body.ToString().TrimEnd() };
     }

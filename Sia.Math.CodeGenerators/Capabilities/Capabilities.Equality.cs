@@ -1,6 +1,6 @@
-using System.Linq;
-
 namespace Sia.Math.CodeGenerators.Capabilities;
+
+using System.Linq;
 
 public static class Equality
 {
@@ -25,8 +25,7 @@ public static class Equality
         body.AppendLine($"            return (obj is {shape.TypeName} other) && Equals(other);");
         body.AppendLine("        }");
 
-        return new CodeFragment
-        {
+        return new CodeFragment {
             Usings = ["System.Diagnostics.CodeAnalysis", "System.Runtime.CompilerServices"],
             Inherits = [$"System.IEquatable<{shape.TypeName}>"],
             TypeBody = body.ToString().TrimEnd()

@@ -1,11 +1,11 @@
+namespace Sia.Math.CodeGenerators.Capabilities;
+
 using System.Linq;
 using System.Text;
 
-namespace Sia.Math.CodeGenerators.Capabilities;
-
 public static class Hashing
 {
-    private static readonly uint[] s_Primes =
+    private static readonly uint[] Primes =
     [
         0x6E624EB7u, 0x7383ED49u, 0xDD49C23Bu, 0xEBD0D005u, 0x91475DF7u, 0x55E84827u, 0x90A285BBu, 0x5D19E1D5u,
         0xFAAF07DDu, 0x625C45BDu, 0xC9F27FCBu, 0x6D2523B1u, 0x6E2BF6A9u, 0xCC74B3B7u, 0x83B58237u, 0x833E3E29u,
@@ -51,12 +51,11 @@ public static class Hashing
         typeBody.AppendLine("        public override int GetHashCode() => (int)math.hash(this);");
 
         var counter = new PrimeCounter();
-        EmitHash(shape, mathBody, false, counter);
+        GenerateHash(shape, mathBody, false, counter);
         counter.Reset();
-        EmitHash(shape, mathBody, true, counter);
+        GenerateHash(shape, mathBody, true, counter);
 
-        return new CodeFragment
-        {
+        return new CodeFragment {
             Usings = ["System.Runtime.CompilerServices"],
             TypeBody = typeBody.ToString().TrimEnd(),
             MathBody = mathBody.ToString().TrimEnd()
@@ -67,10 +66,10 @@ public static class Hashing
     {
         private uint _index;
         public void Reset() => _index = 0;
-        public uint Next() => s_Primes[_index++ & 255];
+        public uint Next() => Primes[_index++ & 255];
     }
 
-    private static void EmitHash(TypeShape shape, StringBuilder body, bool wide, PrimeCounter counter)
+    private static void GenerateHash(TypeShape shape, StringBuilder body, bool wide, PrimeCounter counter)
     {
         var retType = wide ? BaseType.UInt.ToTypeName(shape.Rows, 1) : "uint";
         var fnName = wide ? "hashwide" : "hash";
@@ -83,14 +82,11 @@ public static class Hashing
         body.AppendLine($"        public static {retType} {fnName}({paramType} v)");
         body.AppendLine("        {");
 
-        if (shape.BaseType == BaseType.Bool)
-        {
+        if (shape.BaseType == BaseType.Bool) {
             var align = $"            return {(wide ? "(" : "csum(")}";
             body.Append(align);
-            for (var col = 0; col < shape.Columns; col++)
-            {
-                if (col != 0)
-                {
+            for (var col = 0; col < shape.Columns; col++) {
+                if (col != 0) {
                     body.AppendLine(" + ");
                     body.Append(new string(' ', align.Length));
                 }
@@ -99,20 +95,19 @@ public static class Hashing
             }
             body.AppendLine(");");
         }
-        else
-        {
+        else {
             var align = $"            return {(wide ? "(" : "csum(")}";
             body.Append(align);
-            for (var col = 0; col < shape.Columns; col++)
-            {
-                if (col != 0)
-                {
+            for (var col = 0; col < shape.Columns; col++) {
+                if (col != 0) {
                     body.AppendLine(" + ");
                     body.Append(new string(' ', align.Length));
                 }
                 var colName = shape.IsMatrix ? $"v.c{col}" : "v";
-                if (shape.BaseType != BaseType.UInt)
+                if (shape.BaseType != BaseType.UInt) {
                     colName = shape.BaseType == BaseType.Double ? $"fold_to_uint({colName})" : $"asuint({colName})";
+                }
+
                 body.Append($"{colName} * {FmtPrimes(shape.Rows, counter)}");
             }
             body.AppendLine($") + 0x{counter.Next():X}u;");
@@ -122,14 +117,16 @@ public static class Hashing
 
     private static string FmtPrimes(int n, PrimeCounter counter)
     {
-        var sb = new StringBuilder();
-        sb.Append($"uint{n}(");
-        for (var i = 0; i < n; i++)
-        {
-            if (i != 0) sb.Append(", ");
-            sb.Append($"0x{counter.Next():X}u");
+        var source = new StringBuilder();
+        source.Append($"uint{n}(");
+        for (var i = 0; i < n; i++) {
+            if (i != 0) {
+                source.Append(", ");
+            }
+
+            source.Append($"0x{counter.Next():X}u");
         }
-        sb.Append(')');
-        return sb.ToString();
+        source.Append(')');
+        return source.ToString();
     }
 }

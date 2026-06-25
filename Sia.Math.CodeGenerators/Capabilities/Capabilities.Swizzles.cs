@@ -1,46 +1,58 @@
+namespace Sia.Math.CodeGenerators.Capabilities;
+
 using System.Linq;
 using System.Text;
-
-namespace Sia.Math.CodeGenerators.Capabilities;
 
 public static class Swizzles
 {
     public static CodeFragment Generate(TypeShape shape)
     {
-        if (shape.IsMatrix) return CodeFragment.Empty;
+        if (shape.IsMatrix) {
+            return CodeFragment.Empty;
+        }
 
         var body = new StringBuilder();
         var count = shape.Rows;
 
-        for (var x = 0; x < count; x++)
-        for (var y = 0; y < count; y++)
-        for (var z = 0; z < count; z++)
-        for (var w = 0; w < count; w++)
-            EmitOne(shape, [x, y, z, w], body);
+        for (var x = 0; x < count; x++) {
+            for (var y = 0; y < count; y++) {
+                for (var z = 0; z < count; z++) {
+                    for (var w = 0; w < count; w++) {
+                        GenerateOne(shape, [x, y, z, w], body);
+                    }
+                }
+            }
+        }
 
-        for (var x = 0; x < count; x++)
-        for (var y = 0; y < count; y++)
-        for (var z = 0; z < count; z++)
-            EmitOne(shape, [x, y, z], body);
+        for (var x = 0; x < count; x++) {
+            for (var y = 0; y < count; y++) {
+                for (var z = 0; z < count; z++) {
+                    GenerateOne(shape, [x, y, z], body);
+                }
+            }
+        }
 
-        for (var x = 0; x < count; x++)
-        for (var y = 0; y < count; y++)
-            EmitOne(shape, [x, y], body);
+        for (var x = 0; x < count; x++) {
+            for (var y = 0; y < count; y++) {
+                GenerateOne(shape, [x, y], body);
+            }
+        }
 
-        return new CodeFragment
-        {
+        return new CodeFragment {
             Usings = ["System.Runtime.CompilerServices", "System.Runtime.Intrinsics"],
             TypeBody = body.ToString().TrimEnd()
         };
     }
 
-    private static void EmitOne(TypeShape shape, int[] sw, StringBuilder body)
+    private static void GenerateOne(TypeShape shape, int[] sw, StringBuilder body)
     {
         var bits = 0;
         var allowSetter = true;
-        foreach (var s in sw)
-        {
-            if ((bits & (1 << s)) != 0) allowSetter = false;
+        foreach (var s in sw) {
+            if ((bits & (1 << s)) != 0) {
+                allowSetter = false;
+            }
+
             bits |= 1 << s;
         }
 
@@ -51,12 +63,13 @@ public static class Swizzles
         body.AppendLine("        {");
         body.AppendLine("            [MethodImpl(MethodImplOptions.AggressiveInlining)]");
         body.AppendLine($"            get => {BuildGetter(shape, sw, fieldType, names)};");
-        if (allowSetter)
-        {
+        if (allowSetter) {
             body.AppendLine("            [MethodImpl(MethodImplOptions.AggressiveInlining)]");
             body.AppendLine("            set {");
-            for (var i = 0; i < sw.Length; i++)
+            for (var i = 0; i < sw.Length; i++) {
                 body.AppendLine($"                {TypeShape.Components[sw[i]]} = {(sw.Length > 1 ? $"value.{TypeShape.Components[i]}" : "value")};");
+            }
+
             body.AppendLine("            }");
         }
         body.AppendLine("        }");
@@ -65,8 +78,9 @@ public static class Swizzles
     private static string BuildGetter(TypeShape shape, int[] sw, string fieldType, string[] names)
     {
         var bt = shape.BaseType;
-        if (bt == BaseType.Bool)
+        if (bt == BaseType.Bool) {
             return $"new {fieldType}({string.Join(", ", names)})";
+        }
 
         var comp = sw.Length;
         var srcLanes = Simd.SimdStrategy.NativeLaneCount(bt, shape.Rows);
@@ -77,8 +91,7 @@ public static class Swizzles
             ? (width == 2 ? "Vector128" : "Vector256")
             : "Vector128";
 
-        var suffix = bt switch
-        {
+        var suffix = bt switch {
             BaseType.Double => "L",
             BaseType.UInt => "u",
             _ => ""
