@@ -21,15 +21,11 @@ public record struct MatrixTransform(float3 Translation, float3x3 Rotation)
 
 public static partial class math
 {
-    // float3x3 stores a rotation's rows as basis images (c_i = R*e_i), so applying it to a vector
-    // or composing two of them uses the row-vector convention (mul(v, M) = v*M), not mul(M, v) -
-    // matching System.Numerics (Vector4.Transform(v, M) = v*M, no M*v overload).
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MatrixTransform inverse(in MatrixTransform a)
     {
         var inverseRotation = transpose(a.Rotation);
-        return new MatrixTransform(mul(-a.Translation, inverseRotation), inverseRotation);
+        return new MatrixTransform(mul(inverseRotation, -a.Translation), inverseRotation);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -54,7 +50,7 @@ public static partial class math
     public static MatrixTransform mul(in MatrixTransform cFromB, in MatrixTransform bFromA)
     {
         return new MatrixTransform(
-            mul(bFromA.Translation, cFromB.Rotation) + cFromB.Translation,
-            mul(bFromA.Rotation, cFromB.Rotation));
+            mul(cFromB.Rotation, bFromA.Translation) + cFromB.Translation,
+            mul(cFromB.Rotation, bFromA.Rotation));
     }
 }

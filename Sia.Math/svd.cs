@@ -85,17 +85,17 @@ public static class svd
     {
         var u = qrGivensQuat(math.float2(b.c0.x, b.c0.y), math.float4(0f, 0f, 1f, 1f));
         var qmt = math.float3x3(math.conjugate(u));
-        r = math.mul(b, qmt); // qmt * b
+        r = math.mul(qmt, b);
 
         var q = qrGivensQuat(math.float2(r.c0.x, r.c0.z), math.float4(0f, -1f, 0f, 1f));
         u = math.mul(u, q);
         qmt = math.float3x3(math.conjugate(q));
-        r = math.mul(r, qmt); // qmt * r
+        r = math.mul(qmt, r);
 
         q = qrGivensQuat(math.float2(r.c1.y, r.c1.z), math.float4(1f, 0f, 0f, 1f));
         u = math.mul(u, q);
         qmt = math.float3x3(math.conjugate(q));
-        r = math.mul(r, qmt); // qmt * r
+        r = math.mul(qmt, r);
 
         return u;
     }
@@ -109,17 +109,17 @@ public static class svd
             var q = approxGivensQuat(math.float3(s.c0.x, s.c1.y, s.c0.y), math.float4(0f, 0f, 1f, 1f));
             v = math.mul(v, q);
             var qm = math.float3x3(q);
-            s = math.mul(qm, math.mul(s, math.transpose(qm))); // transpose(qm) * s * qm
+            s = math.mul(math.mul(math.transpose(qm), s), qm);
 
             q = approxGivensQuat(math.float3(s.c1.y, s.c2.z, s.c1.z), math.float4(1f, 0f, 0f, 1f));
             v = math.mul(v, q);
             qm = math.float3x3(q);
-            s = math.mul(qm, math.mul(s, math.transpose(qm))); // transpose(qm) * s * qm
+            s = math.mul(math.mul(math.transpose(qm), s), qm);
 
             q = approxGivensQuat(math.float3(s.c2.z, s.c0.x, s.c2.x), math.float4(0f, 1f, 0f, 1f));
             v = math.mul(v, q);
             qm = math.float3x3(q);
-            s = math.mul(qm, math.mul(s, math.transpose(qm))); // transpose(qm) * s * qm
+            s = math.mul(math.mul(math.transpose(qm), s), qm);
         }
 
         return v;
@@ -128,10 +128,10 @@ public static class svd
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float3 singularValuesDecomposition(in float3x3 a, out quaternion u, out quaternion v)
     {
-        var s = math.mul(a, math.transpose(a)); // transpose(a) * a
+        var s = math.mul(math.transpose(a), a);
         v = jacobiIteration(ref s);
         var b = math.float3x3(v);
-        b = math.mul(b, a); // a * b
+        b = math.mul(a, b);
         sortSingularValues(ref b, ref v);
         u = givensQRFactorization(b, out var e);
 
@@ -149,7 +149,7 @@ public static class svd
         var um = math.float3x3(u);
         var vm = math.float3x3(v);
 
-        return math.mul(math.scaleMul(rcpsafe(e, k_EpsilonDeterminant), math.transpose(um)), vm); // vm * (rcpsafe(e) rows-scaled onto transpose(um))
+        return math.mul(vm, math.scaleMul(rcpsafe(e, k_EpsilonDeterminant), math.transpose(um)));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

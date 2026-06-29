@@ -56,9 +56,7 @@ public static class MatrixMultiplicationEmitter
                             shared,
                             columns,
                             lhsIsMatrix,
-                            rhsIsMatrix,
-                            lhsSquare,
-                            rhsSquare);
+                            rhsIsMatrix);
                     }
                 }
             }
@@ -74,24 +72,9 @@ public static class MatrixMultiplicationEmitter
 
         source.Line("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
         source.Block(declaration, body => {
-            if (signature.RequiresTranspose) {
-                body.Line("var t = transpose(a);");
-                body.Line($"return {GenerateTransposedProduct(signature)};");
-                return;
-            }
-
             body.Line($"return {GenerateProduct(signature)};");
         });
         source.Line();
-    }
-
-    private static string GenerateTransposedProduct(
-        MatrixMultiplicationSignature signature)
-    {
-        var terms = Enumerable.Range(0, signature.Shared)
-            .Select(index =>
-                $"t.{TypeShape.MatrixFields[index]} * b.{TypeShape.Components[index]}");
-        return string.Join(" + ", terms);
     }
 
     private static string GenerateProduct(MatrixMultiplicationSignature signature)
@@ -119,29 +102,16 @@ public static class MatrixMultiplicationEmitter
         int row,
         int column)
     {
-        string left;
-        string right;
-
-        if (signature.IsRowMajor) {
-            left = signature.Rows == 1
-                ? $"a.{TypeShape.Components[row]}"
-                : $"a.{TypeShape.MatrixFields[column]}.{TypeShape.Components[row]}";
-            right = signature.Rows == 1
-                ? $"b.{TypeShape.MatrixFields[row]}.{TypeShape.Components[column]}"
-                : $"b.{TypeShape.MatrixFields[row]}";
-        }
-        else {
-            left = (signature.Rows, signature.Shared) switch {
-                (1, 1) => "a",
-                (1, _) or (_, 1) => $"a.{TypeShape.Components[row]}",
-                _ => $"a.{TypeShape.MatrixFields[row]}",
-            };
-            right = (signature.Shared, signature.Columns) switch {
-                (1, 1) => "b",
-                (1, _) or (_, 1) => $"b.{TypeShape.Components[row]}",
-                _ => $"b.{TypeShape.MatrixFields[column]}.{TypeShape.Components[row]}",
-            };
-        }
+        var left = (signature.Rows, signature.Shared) switch {
+            (1, 1) => "a",
+            (1, _) or (_, 1) => $"a.{TypeShape.Components[row]}",
+            _ => $"a.{TypeShape.MatrixFields[row]}",
+        };
+        var right = (signature.Shared, signature.Columns) switch {
+            (1, 1) => "b",
+            (1, _) or (_, 1) => $"b.{TypeShape.Components[row]}",
+            _ => $"b.{TypeShape.MatrixFields[column]}.{TypeShape.Components[row]}",
+        };
 
         return $"{left} * {right}";
     }
@@ -152,16 +122,12 @@ public static class MatrixMultiplicationEmitter
         int Shared,
         int Columns,
         bool LeftIsMatrix,
-        bool RightIsMatrix,
-        bool LeftIsSquare,
-        bool RightIsSquare)
+        bool RightIsMatrix)
     {
         public string ResultType => Type.ToTypeName(Rows, Columns);
         public string LeftType => Type.ToTypeName(Rows, Shared);
         public string RightType => Type.ToTypeName(Shared, Columns);
         public string LeftParameter => LeftIsMatrix ? $"in {LeftType}" : LeftType;
         public string RightParameter => RightIsMatrix ? $"in {RightType}" : RightType;
-        public bool IsRowMajor => RightIsSquare && (Rows == 1 || LeftIsSquare);
-        public bool RequiresTranspose => LeftIsSquare && Columns == 1 && Shared > 1;
     }
 }

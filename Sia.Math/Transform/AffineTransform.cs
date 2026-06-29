@@ -51,11 +51,11 @@ public static partial class math
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AffineTransform mul(in float3x3 a, in AffineTransform b) =>
-        new(mul(b.Translation, a), mul(b.RotationScale, a));
+        new(mul(a, b.Translation), mul(a, b.RotationScale));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AffineTransform mul(in AffineTransform a, in float3x3 b) =>
-        new(a.Translation, mul(a.RotationScale, b));
+        new(a.Translation, mul(b, a.RotationScale));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint hash(in AffineTransform v)

@@ -159,10 +159,10 @@ public class MatrixTests
             {
                 var expected = 0f;
                 for (var k = 0; k < 4; k++)
-                    expected += a[row][k] * b[k][col];
+                    expected += a[k][row] * b[col][k];
 
-                Assert.True(System.Math.Abs(result[row][col] - expected) < 1e-2f,
-                    $"[{row},{col}]: expected {expected}, got {result[row][col]}");
+                Assert.True(System.Math.Abs(result[col][row] - expected) < 1e-2f,
+                    $"[{row},{col}]: expected {expected}, got {result[col][row]}");
             }
         }
     }
@@ -180,7 +180,7 @@ public class MatrixTests
             {
                 var expected = 0f;
                 for (var k = 0; k < 4; k++)
-                    expected += v[k] * m[k][col];
+                    expected += v[k] * m[col][k];
 
                 Assert.True(System.Math.Abs(result[col] - expected) < 1e-2f,
                     $"[{col}]: expected {expected}, got {result[col]}");
@@ -201,7 +201,7 @@ public class MatrixTests
             {
                 var expected = 0f;
                 for (var k = 0; k < 4; k++)
-                    expected += m[row][k] * v[k];
+                    expected += m[k][row] * v[k];
 
                 Assert.True(System.Math.Abs(result[row] - expected) < 1e-2f,
                     $"[{row}]: expected {expected}, got {result[row]}");

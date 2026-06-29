@@ -28,7 +28,7 @@ public class TransformTests
             var p = RandomPoint();
 
             var homogeneous = new float4(p, 1f);
-            var transformed = math.mul(homogeneous, m);
+            var transformed = math.mul(m, homogeneous);
 
             var expected = math.rotate(q, p) + translation;
             Approx(expected, transformed.xyz);
@@ -50,7 +50,7 @@ public class TransformTests
             var p = RandomPoint();
 
             var homogeneous = new float4(p, 1f);
-            var transformed = math.mul(homogeneous, m);
+            var transformed = math.mul(m, homogeneous);
 
             var expected = math.rotate(q, p * scale) + translation;
             Approx(expected, transformed.xyz);
