@@ -383,8 +383,12 @@ public static partial class MathFunctionCatalog
 
         Fn("log2", [BaseType.Float, BaseType.Double], (2, 4), sig => {
             var name = sig.Shape.TypeName;
-            var log2e = sig.Type == BaseType.Double ? "LOG2E_DBL" : "LOG2E";
-            return [Attr, $"public static {name} log2({name} x) => log(x) * {log2e};"];
+            var vectorClass = Simd.SimdStrategy.NativeVectorClassName(sig.Type, sig.Dimension);
+            return FunctionEmitter.GenerateSimd(
+                $"public static {name} log2({name} x)",
+                sig.Shape,
+                $"new {name}({vectorClass}.Log2(x.data))",
+                $"new {name}({PerComp("log2", sig.Dimension)})");
         }),
 
         Fn("log10", [BaseType.Float, BaseType.Double], (2, 4), sig => {
