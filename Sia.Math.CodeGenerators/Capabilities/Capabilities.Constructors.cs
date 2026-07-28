@@ -61,37 +61,43 @@ public static class Constructors
         typeBody.AppendLine($"        public {shape.TypeName}({typeParams})");
         typeBody.AppendLine("        {");
 
-        var args = new List<string>();
-        var compIdx = 0;
-        for (var p = 0; p < numParams; p++) {
-            var cnt = paramComps[p];
-            var compStr = string.Concat(TypeShape.Components.Skip(compIdx).Take(cnt));
-            for (var j = 0; j < cnt; j++) {
-                var rhs = cnt > 1 ? $"{compStr}.{TypeShape.Components[j]}" : compStr;
-                args.Add(rhs);
-                compIdx++;
-            }
-        }
-
-        if (shape.BaseType == BaseType.Bool) {
-            for (var i = 0; i < args.Count; i++) {
-                typeBody.AppendLine($"            this.{TypeShape.Components[i]} = {args[i]};");
-            }
+        if (shape.BaseType != BaseType.Bool && numParams == 1 && paramComps[0] == shape.Rows) {
+            var sourceName = string.Concat(TypeShape.Components.Take(shape.Rows));
+            typeBody.AppendLine($"            data = {sourceName}.data;");
         }
         else {
-            var laneCount = Simd.SimdStrategy.NativeLaneCount(shape.BaseType, shape.Rows);
-            var zero = shape.BaseType.ToTypedLiteral(0);
-            for (var i = shape.Rows; i < laneCount; i++) {
-                args.Add(zero);
+            var args = new List<string>();
+            var argCompIdx = 0;
+            for (var p = 0; p < numParams; p++) {
+                var cnt = paramComps[p];
+                var compStr = string.Concat(TypeShape.Components.Skip(argCompIdx).Take(cnt));
+                for (var j = 0; j < cnt; j++) {
+                    var rhs = cnt > 1 ? $"{compStr}.{TypeShape.Components[j]}" : compStr;
+                    args.Add(rhs);
+                    argCompIdx++;
+                }
             }
 
-            var vectorClassName = Simd.SimdStrategy.NativeVectorClassName(shape.BaseType, shape.Rows);
-            typeBody.AppendLine($"            data = {vectorClassName}.Create({string.Join(", ", args)});");
+            if (shape.BaseType == BaseType.Bool) {
+                for (var i = 0; i < args.Count; i++) {
+                    typeBody.AppendLine($"            this.{TypeShape.Components[i]} = {args[i]};");
+                }
+            }
+            else {
+                var laneCount = Simd.SimdStrategy.NativeLaneCount(shape.BaseType, shape.Rows);
+                var zero = shape.BaseType.ToTypedLiteral(0);
+                for (var i = shape.Rows; i < laneCount; i++) {
+                    args.Add(zero);
+                }
+
+                var vectorClassName = Simd.SimdStrategy.NativeVectorClassName(shape.BaseType, shape.Rows);
+                typeBody.AppendLine($"            data = {vectorClassName}.Create({string.Join(", ", args)});");
+            }
         }
         typeBody.AppendLine("        }");
 
         var bodyBuilder = new StringBuilder();
-        compIdx = 0;
+        var compIdx = 0;
         for (var p = 0; p < numParams; p++) {
             var cnt = paramComps[p];
             var compStr = string.Concat(TypeShape.Components.Skip(compIdx).Take(cnt));

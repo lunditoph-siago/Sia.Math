@@ -22,7 +22,7 @@ public static class MatrixMultiplicationEmitter
         }
 
         var source = ScopeWriter.GenerateStandaloneFile(
-            ["System", "System.Runtime.CompilerServices"],
+            ["System", "System.Runtime.CompilerServices", "System.Runtime.Intrinsics"],
             body.ToString());
         return new GeneratedSource("matrix.g.cs", source);
     }
@@ -92,29 +92,55 @@ public static class MatrixMultiplicationEmitter
         MatrixMultiplicationSignature signature,
         int column)
     {
+        if (signature.Rows > 1 && signature.Shared > 1
+            && signature.Type is BaseType.Float or BaseType.Double) {
+            return GenerateFusedColumn(signature, column);
+        }
+
         var terms = Enumerable.Range(0, signature.Shared)
             .Select(row => GenerateTerm(signature, row, column));
         return string.Join(" + ", terms);
     }
 
-    private static string GenerateTerm(
+    private static string GenerateFusedColumn(
         MatrixMultiplicationSignature signature,
-        int row,
         int column)
     {
-        var left = (signature.Rows, signature.Shared) switch {
+        var columnType = signature.Type.ToTypeName(signature.Rows, 1);
+        var vectorClass = Simd.SimdStrategy.NativeVectorClassName(signature.Type, signature.Rows);
+
+        var expression = $"{GenerateLeft(signature, 0)}.data * {vectorClass}.Create({GenerateRight(signature, 0, column)})";
+        for (var row = 1; row < signature.Shared; row++) {
+            expression = $"{vectorClass}.FusedMultiplyAdd({GenerateLeft(signature, row)}.data, {vectorClass}.Create({GenerateRight(signature, row, column)}), {expression})";
+        }
+
+        return $"new {columnType}({expression})";
+    }
+
+    private static string GenerateLeft(
+        MatrixMultiplicationSignature signature,
+        int row) =>
+        (signature.Rows, signature.Shared) switch {
             (1, 1) => "a",
             (1, _) or (_, 1) => $"a.{TypeShape.Components[row]}",
             _ => $"a.{TypeShape.MatrixFields[row]}",
         };
-        var right = (signature.Shared, signature.Columns) switch {
+
+    private static string GenerateRight(
+        MatrixMultiplicationSignature signature,
+        int row,
+        int column) =>
+        (signature.Shared, signature.Columns) switch {
             (1, 1) => "b",
             (1, _) or (_, 1) => $"b.{TypeShape.Components[row]}",
             _ => $"b.{TypeShape.MatrixFields[column]}.{TypeShape.Components[row]}",
         };
 
-        return $"{left} * {right}";
-    }
+    private static string GenerateTerm(
+        MatrixMultiplicationSignature signature,
+        int row,
+        int column) =>
+        $"{GenerateLeft(signature, row)} * {GenerateRight(signature, row, column)}";
 
     private readonly record struct MatrixMultiplicationSignature(
         BaseType Type,
