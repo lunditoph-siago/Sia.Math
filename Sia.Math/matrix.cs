@@ -467,10 +467,10 @@ public partial struct float4x4
         var rcpdz = 1.0f / (far - near);
 
         return float4x4(
-            2.0f * rcpdx,   0.0f,            0.0f,           0.0f,
-            0.0f,           2.0f * rcpdy,    0.0f,           0.0f,
-            0.0f,           0.0f,           -2.0f * rcpdz,  -(far + near) * rcpdz,
-            0.0f,           0.0f,            0.0f,           1.0f
+            2.0f * rcpdx,   0.0f,           0.0f,       0.0f,
+            0.0f,           2.0f * rcpdy,   0.0f,       0.0f,
+            0.0f,           0.0f,          -rcpdz,     -near * rcpdz,
+            0.0f,           0.0f,           0.0f,       1.0f
         );
     }
 
@@ -482,10 +482,10 @@ public partial struct float4x4
         var rcpdz = 1.0f / (far - near);
 
         return float4x4(
-            2.0f * rcpdx,   0.0f,           0.0f,               -(right + left) * rcpdx,
-            0.0f,           2.0f * rcpdy,   0.0f,               -(top + bottom) * rcpdy,
-            0.0f,           0.0f,          -2.0f * rcpdz,       -(far + near) * rcpdz,
-            0.0f,           0.0f,           0.0f,                1.0f
+            2.0f * rcpdx,   0.0f,           0.0f,      -(right + left) * rcpdx,
+            0.0f,           2.0f * rcpdy,   0.0f,      -(top + bottom) * rcpdy,
+            0.0f,           0.0f,          -rcpdz,     -near * rcpdz,
+            0.0f,           0.0f,           0.0f,       1.0f
         );
     }
 
@@ -496,10 +496,10 @@ public partial struct float4x4
         var rcpdz = 1.0f / (near - far);
 
         return float4x4(
-            cotangent / aspect, 0.0f,       0.0f,                   0.0f,
-            0.0f,               cotangent,  0.0f,                   0.0f,
-            0.0f,               0.0f,       (far + near) * rcpdz,   2.0f * near * far * rcpdz,
-            0.0f,               0.0f,      -1.0f,                   0.0f
+            cotangent / aspect, 0.0f,       0.0f,          0.0f,
+            0.0f,               cotangent,  0.0f,          0.0f,
+            0.0f,               0.0f,       far * rcpdz,   near * far * rcpdz,
+            0.0f,               0.0f,      -1.0f,          0.0f
         );
     }
 
@@ -513,7 +513,7 @@ public partial struct float4x4
         return float4x4(
             2.0f * near * rcpWidth,     0.0f,                       (left + right) * rcpWidth,     0.0f,
             0.0f,                       2.0f * near * rcpHeight,    (bottom + top) * rcpHeight,    0.0f,
-            0.0f,                       0.0f,                        (far + near) * rcpdz,          2.0f * near * far * rcpdz,
+            0.0f,                       0.0f,                        far * rcpdz,                   near * far * rcpdz,
             0.0f,                       0.0f,                       -1.0f,                          0.0f
         );
     }
