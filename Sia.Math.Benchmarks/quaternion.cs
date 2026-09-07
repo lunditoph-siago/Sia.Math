@@ -350,26 +350,43 @@ public class QuaternionLookRotationSafe : BenchBase
 [BenchmarkCategory("LowPriority")]
 public class QuaternionCreateFromRotationMatrix : BenchBase
 {
-    private float4x4 _sa;
-    private Matrix4x4 _ma;
+    private const int Count = 8;
+
+    private float4x4[] _sa = null!;
+    private Matrix4x4[] _ma = null!;
+    private int _i;
 
     protected override void OnSetup()
     {
-        var axis = math.normalize(new float3(NextF(), NextF(), NextF()));
-        var angle = NextF() * 0.03f;
-        _ma = Matrix4x4.CreateFromQuaternion(Quaternion.CreateFromAxisAngle(new(axis.x, axis.y, axis.z), angle));
-        _sa = new(
-            _ma.M11, _ma.M12, _ma.M13, _ma.M14,
-            _ma.M21, _ma.M22, _ma.M23, _ma.M24,
-            _ma.M31, _ma.M32, _ma.M33, _ma.M34,
-            _ma.M41, _ma.M42, _ma.M43, _ma.M44);
+        _sa = new float4x4[Count];
+        _ma = new Matrix4x4[Count];
+
+        for (var i = 0; i < Count; i++) {
+            var axis = math.normalize(new float3(NextF(), NextF(), NextF()));
+            var angle = (float)(i * (2.0 * System.Math.PI / Count) + 0.1);
+            var m = Matrix4x4.CreateFromQuaternion(Quaternion.CreateFromAxisAngle(new(axis.x, axis.y, axis.z), angle));
+            _ma[i] = m;
+            _sa[i] = new(
+                m.M11, m.M12, m.M13, m.M14,
+                m.M21, m.M22, m.M23, m.M24,
+                m.M31, m.M32, m.M33, m.M34,
+                m.M41, m.M42, m.M43, m.M44);
+        }
     }
 
     [Benchmark(Baseline = true), BenchmarkCategory("CreateFromRotationMatrix")]
-    public void Sys_CreateFromRotationMatrix() { var r = Quaternion.CreateFromRotationMatrix(_ma); Sink(r.X); }
+    public void Sys_CreateFromRotationMatrix()
+    {
+        var r = Quaternion.CreateFromRotationMatrix(_ma[_i = (_i + 1) & (Count - 1)]);
+        Sink(r.X);
+    }
 
     [Benchmark, BenchmarkCategory("CreateFromRotationMatrix")]
-    public void Sia_CreateFromRotationMatrix() { var r = math.quaternion(_sa); Sink(r.value.x); }
+    public void Sia_CreateFromRotationMatrix()
+    {
+        var r = math.quaternion(_sa[_i = (_i + 1) & (Count - 1)]);
+        Sink(r.value.x);
+    }
 }
 
 #endregion
@@ -379,25 +396,42 @@ public class QuaternionCreateFromRotationMatrix : BenchBase
 [BenchmarkCategory("HighPriority")]
 public class QuaternionRotationFromMatrix : BenchBase
 {
-    private float3x3 _sa;
-    private Matrix4x4 _ma;
+    private const int Count = 8;
+
+    private float3x3[] _sa = null!;
+    private Matrix4x4[] _ma = null!;
+    private int _i;
 
     protected override void OnSetup()
     {
-        var axis = math.normalize(new float3(NextF(), NextF(), NextF()));
-        var angle = NextF() * 0.03f;
-        _ma = Matrix4x4.CreateFromQuaternion(Quaternion.CreateFromAxisAngle(new(axis.x, axis.y, axis.z), angle));
-        _sa = new(
-            new float3(_ma.M11, _ma.M12, _ma.M13),
-            new float3(_ma.M21, _ma.M22, _ma.M23),
-            new float3(_ma.M31, _ma.M32, _ma.M33));
+        _sa = new float3x3[Count];
+        _ma = new Matrix4x4[Count];
+
+        for (var i = 0; i < Count; i++) {
+            var axis = math.normalize(new float3(NextF(), NextF(), NextF()));
+            var angle = (float)(i * (2.0 * System.Math.PI / Count) + 0.1);
+            var m = Matrix4x4.CreateFromQuaternion(Quaternion.CreateFromAxisAngle(new(axis.x, axis.y, axis.z), angle));
+            _ma[i] = m;
+            _sa[i] = new(
+                new float3(m.M11, m.M12, m.M13),
+                new float3(m.M21, m.M22, m.M23),
+                new float3(m.M31, m.M32, m.M33));
+        }
     }
 
     [Benchmark(Baseline = true), BenchmarkCategory("RotationFromMatrix")]
-    public void Sys_RotationFromMatrix() { var r = Quaternion.CreateFromRotationMatrix(_ma); Sink(r.X); }
+    public void Sys_RotationFromMatrix()
+    {
+        var r = Quaternion.CreateFromRotationMatrix(_ma[_i = (_i + 1) & (Count - 1)]);
+        Sink(r.X);
+    }
 
     [Benchmark, BenchmarkCategory("RotationFromMatrix")]
-    public void Sia_RotationFromMatrix() { var r = math.rotation(_sa); Sink(r.value.x); }
+    public void Sia_RotationFromMatrix()
+    {
+        var r = math.rotation(_sa[_i = (_i + 1) & (Count - 1)]);
+        Sink(r.value.x);
+    }
 }
 
 #endregion
