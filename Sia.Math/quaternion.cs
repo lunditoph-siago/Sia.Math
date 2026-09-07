@@ -40,54 +40,60 @@ public struct quaternion : IEquatable<quaternion>, IFormattable
     /// <param name="m">The <see cref="float3x3" /> orthonormal rotation matrix.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public quaternion(in float3x3 m)
-    {
-        var u = m.c0;
-        var v = m.c1;
-        var w = m.c2;
-
-        var u_sign = (asuint(u.x) & 0x80000000);
-        var t = v.y + asfloat(asuint(w.z) ^ u_sign);
-        var u_mask = uint4((int)u_sign >> 31);
-        var t_mask = uint4(asint(t) >> 31);
-
-        var tr = 1.0f + abs(u.x);
-
-        var sign_flips = uint4(0x00000000, 0x80000000, 0x80000000, 0x80000000) ^
-                         (u_mask & uint4(0x00000000, 0x80000000, 0x00000000, 0x80000000)) ^
-                         (t_mask & uint4(0x80000000, 0x80000000, 0x80000000, 0x00000000));
-
-        var result = float4(tr, u.y, w.x, v.z) + asfloat(asuint(float4(t, v.x, u.z, w.y)) ^ sign_flips);   // +---, +++-, ++-+, +-++
-
-        result = asfloat((asuint(result) & ~u_mask) | (asuint(result.zwxy) & u_mask));
-        result = asfloat((asuint(result.wzyx) & ~t_mask) | (asuint(result) & t_mask));
-        value = normalize(result);
-    }
+        => value = FromBasis(m.c0.data, m.c1.data, m.c2.data);
 
     /// <summary>Constructs a unit quaternion from an orthonormal <see cref="float4x4" /> matrix.</summary>
     /// <param name="m">The <see cref="float4x4" /> orthonormal rotation matrix.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public quaternion(in float4x4 m)
+        => value = FromBasis(m.c0.data, m.c1.data, m.c2.data);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float4 FromBasis(Vector128<float> u, Vector128<float> v, Vector128<float> w)
     {
-        var u = m.c0;
-        var v = m.c1;
-        var w = m.c2;
+        var sign = Vector128.Create(0x80000000u).AsSingle();
 
-        var u_sign = (asuint(u.x) & 0x80000000);
-        var t = v.y + asfloat(asuint(w.z) ^ u_sign);
-        var u_mask = uint4((int)u_sign >> 31);
-        var t_mask = uint4(asint(t) >> 31);
+        var ux = Vector128.Shuffle(u, Vector128.Create(0, 0, 0, 0));
+        var uy = Vector128.Shuffle(u, Vector128.Create(1, 1, 1, 1));
+        var uz = Vector128.Shuffle(u, Vector128.Create(2, 2, 2, 2));
+        var vx = Vector128.Shuffle(v, Vector128.Create(0, 0, 0, 0));
+        var vy = Vector128.Shuffle(v, Vector128.Create(1, 1, 1, 1));
+        var vz = Vector128.Shuffle(v, Vector128.Create(2, 2, 2, 2));
+        var wx = Vector128.Shuffle(w, Vector128.Create(0, 0, 0, 0));
+        var wy = Vector128.Shuffle(w, Vector128.Create(1, 1, 1, 1));
+        var wz = Vector128.Shuffle(w, Vector128.Create(2, 2, 2, 2));
 
-        var tr = 1.0f + abs(u.x);
+        var uSign = Vector128.BitwiseAnd(ux, sign);
+        var t = Vector128.Add(vy, Vector128.Xor(wz, uSign));
 
-        var sign_flips = uint4(0x00000000, 0x80000000, 0x80000000, 0x80000000) ^
-                         (u_mask & uint4(0x00000000, 0x80000000, 0x00000000, 0x80000000)) ^
-                         (t_mask & uint4(0x80000000, 0x80000000, 0x80000000, 0x00000000));
+        var uMask = Vector128.ShiftRightArithmetic(ux.AsInt32(), 31).AsSingle();
+        var tMask = Vector128.ShiftRightArithmetic(t.AsInt32(), 31).AsSingle();
 
-        var result = float4(tr, u.y, w.x, v.z) + asfloat(asuint(float4(t, v.x, u.z, w.y)) ^ sign_flips);   // +---, +++-, ++-+, +-++
+        var tr = Vector128.Add(Vector128.Create(1.0f), Vector128.AndNot(ux, sign));
 
-        result = asfloat((asuint(result) & ~u_mask) | (asuint(result.zwxy) & u_mask));
-        result = asfloat((asuint(result.wzyx) & ~t_mask) | (asuint(result) & t_mask));
-        value = normalize(result);
+        var a = Lanes(tr, uy, wx, vz);
+        var b = Lanes(t, vx, uz, wy);
+
+        var flips = Vector128.Xor(
+            Vector128.Xor(
+                Vector128.Create(0x00000000u, 0x80000000u, 0x80000000u, 0x80000000u).AsSingle(),
+                Vector128.BitwiseAnd(uMask, Vector128.Create(0x00000000u, 0x80000000u, 0x00000000u, 0x80000000u).AsSingle())),
+            Vector128.BitwiseAnd(tMask, Vector128.Create(0x80000000u, 0x80000000u, 0x80000000u, 0x00000000u).AsSingle()));
+
+        var r = Vector128.Add(a, Vector128.Xor(b, flips));   // +---, +++-, ++-+, +-++
+
+        r = Vector128.ConditionalSelect(uMask, Vector128.Shuffle(r, Vector128.Create(2, 3, 0, 1)), r);
+        r = Vector128.ConditionalSelect(tMask, r, Vector128.Shuffle(r, Vector128.Create(3, 2, 1, 0)));
+
+        return normalize(new float4(r));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<float> Lanes(Vector128<float> x, Vector128<float> y, Vector128<float> z, Vector128<float> w)
+    {
+        var xy = Vector128.ConditionalSelect(Vector128.Create(0, -1, 0, 0).AsSingle(), y, x);
+        var zw = Vector128.ConditionalSelect(Vector128.Create(0, 0, 0, -1).AsSingle(), w, z);
+        return Vector128.ConditionalSelect(Vector128.Create(0, 0, -1, -1).AsSingle(), zw, xy);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
