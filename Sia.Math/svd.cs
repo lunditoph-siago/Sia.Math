@@ -125,7 +125,6 @@ public static class svd
         return v;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float3 singularValuesDecomposition(in float3x3 a, out quaternion u, out quaternion v)
     {
         var s = math.mul(math.transpose(a), a);
@@ -142,7 +141,6 @@ public static class svd
     private static float3 rcpsafe(float3 x, float epsilon = k_EpsilonRCP) =>
         math.select(math.rcp(x), float3.zero, math.abs(x) < epsilon);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float3x3 svdInverse(in float3x3 a)
     {
         var e = singularValuesDecomposition(a, out var u, out var v);
@@ -152,7 +150,6 @@ public static class svd
         return math.mul(vm, math.scaleMul(rcpsafe(e, k_EpsilonDeterminant), math.transpose(um)));
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static quaternion svdRotation(in float3x3 a)
     {
         singularValuesDecomposition(a, out var u, out var v);
